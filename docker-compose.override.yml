@@ -1,0 +1,37 @@
+# Sabra Device Backup - Development Overrides
+# This file is automatically loaded by docker compose
+# For production only, use: docker compose -f docker-compose.yml up -d
+
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - DEBUG=True
+    # Mount source code for live reload (development only)
+    # Uncomment the following for live code changes:
+    # volumes:
+    #   - .:/app
+    #   - static_files:/app/staticfiles
+    #   - media_files:/app/media
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - DEBUG=True
+    # Uncomment for live code changes:
+    # volumes:
+    #   - .:/app
+    #   - media_files:/app/media
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - DEBUG=True

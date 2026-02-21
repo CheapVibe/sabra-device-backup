@@ -1,0 +1,185 @@
+# Sabra Device Backup - Docker Compose Configuration
+# Production deployment with all services
+
+version: '3.8'
+
+services:
+  # ===================
+  # PostgreSQL Database
+  # ===================
+  db:
+    image: postgres:16-alpine
+    container_name: sabra-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-sabra}
+      POSTGRES_USER: ${DB_USER:-sabra}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-sabra} -d ${DB_NAME:-sabra}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - sabra-network
+
+  # ===================
+  # Redis Message Broker
+  # ===================
+  redis:
+    image: redis:7-alpine
+    container_name: sabra-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sabra-network
+
+  # ===================
+  # Django Web Application
+  # ===================
+  web:
+    image: ${SABRA_IMAGE:-ghcr.io/tigerz931/sabra-device-backup:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sabra-web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-sabra}
+      - DB_USER=${DB_USER:-sabra}
+      - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required}
+      - REDIS_URL=redis://redis:6379/0
+      - FERNET_KEY=${FERNET_KEY:?FERNET_KEY is required}
+      - TZ=${TZ:-UTC}
+    volumes:
+      - static_files:/app/staticfiles
+      - media_files:/app/media
+    expose:
+      - "8000"
+    networks:
+      - sabra-network
+
+  # ===================
+  # Celery Worker
+  # ===================
+  celery-worker:
+    image: ${SABRA_IMAGE:-ghcr.io/tigerz931/sabra-device-backup:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sabra-celery-worker
+    restart: unless-stopped
+    command: celery -A sabra worker -l info --concurrency=4
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-sabra}
+      - DB_USER=${DB_USER:-sabra}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - FERNET_KEY=${FERNET_KEY}
+      - TZ=${TZ:-UTC}
+    volumes:
+      - media_files:/app/media
+    networks:
+      - sabra-network
+
+  # ===================
+  # Celery Beat Scheduler
+  # ===================
+  celery-beat:
+    image: ${SABRA_IMAGE:-ghcr.io/tigerz931/sabra-device-backup:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sabra-celery-beat
+    restart: unless-stopped
+    command: celery -A sabra beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-sabra}
+      - DB_USER=${DB_USER:-sabra}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - FERNET_KEY=${FERNET_KEY}
+      - TZ=${TZ:-UTC}
+    networks:
+      - sabra-network
+
+  # ===================
+  # Nginx Reverse Proxy
+  # ===================
+  nginx:
+    image: nginx:alpine
+    container_name: sabra-nginx
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+      - static_files:/app/staticfiles:ro
+      - media_files:/app/media:ro
+    networks:
+      - sabra-network
+
+# ===================
+# Volumes
+# ===================
+volumes:
+  postgres_data:
+    name: sabra-postgres-data
+  redis_data:
+    name: sabra-redis-data
+  static_files:
+    name: sabra-static-files
+  media_files:
+    name: sabra-media-files
+
+# ===================
+# Networks
+# ===================
+networks:
+  sabra-network:
+    name: sabra-network
+    driver: bridge

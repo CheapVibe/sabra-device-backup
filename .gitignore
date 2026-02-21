@@ -80,3 +80,13 @@ coverage.xml
 # OS files
 .DS_Store
 Thumbs.db
+
+# Docker
+docker/nginx/ssl/*.crt
+docker/nginx/ssl/*.key
+docker/nginx/ssl/*.pem
+!docker/nginx/ssl/.gitkeep
+!docker/nginx/ssl/README.md
+.env.docker
+docker-data/
+postgres-data/

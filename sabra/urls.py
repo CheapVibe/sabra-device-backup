@@ -6,6 +6,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
 
 from sabra.views import (
     DashboardView, LogsView, LogsAPIView, LogsClearView,
@@ -13,7 +14,16 @@ from sabra.views import (
     AppImportView, AppImportProcessView, AppImportZipView,
 )
 
+
+def health_check(request):
+    """Simple health check endpoint for Docker/load balancer."""
+    return JsonResponse({'status': 'ok'})
+
+
 urlpatterns = [
+    # Health check (no auth required)
+    path('health/', health_check, name='health_check'),
+    
     # Admin site
     path('admin/', admin.site.urls),
     
