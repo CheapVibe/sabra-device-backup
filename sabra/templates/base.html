@@ -182,6 +182,11 @@
         .diff-remove { background-color: #f8d7da; }
         .diff-header { background-color: #e2e3e5; font-weight: bold; }
         
+        /* Dark mode diff overrides */
+        [data-bs-theme="dark"] .diff-add { background-color: rgba(46, 160, 67, 0.15); color: #7ee787; }
+        [data-bs-theme="dark"] .diff-remove { background-color: rgba(248, 81, 73, 0.15); color: #f85149; }
+        [data-bs-theme="dark"] .diff-header { background-color: #2b3035; color: #adb5bd; }
+        
         .config-view {
             font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
             font-size: 0.875rem;
@@ -429,6 +434,20 @@
                 
                 <!-- Right side items -->
                 <ul class="navbar-nav">
+                    <!-- GitHub Repository Link -->
+                    <li class="nav-item d-flex align-items-center me-3">
+                        <a href="https://github.com/tigerz931/sabra-device-backup" class="btn btn-sm btn-outline-light" target="_blank" rel="noopener noreferrer" title="View on GitHub">
+                            <i class="bi bi-github"></i>
+                        </a>
+                    </li>
+                    
+                    <!-- Dark/Light Mode Toggle -->
+                    <li class="nav-item d-flex align-items-center me-5">
+                        <button type="button" class="btn btn-sm btn-outline-light" id="themeToggle" title="Toggle dark/light mode">
+                            <i class="bi bi-moon-fill" id="themeIcon"></i>
+                        </button>
+                    </li>
+                    
                     <!-- Email status -->
                     <li class="nav-item d-flex align-items-center me-3">
                         {% if email_tested_success %}
@@ -444,13 +463,6 @@
                             <i class="bi bi-envelope-x"></i>
                         </span>
                         {% endif %}
-                    </li>
-                    
-                    <!-- Dark/Light Mode Toggle -->
-                    <li class="nav-item d-flex align-items-center me-3">
-                        <button type="button" class="btn btn-sm btn-outline-light" id="themeToggle" title="Toggle dark/light mode">
-                            <i class="bi bi-moon-fill" id="themeIcon"></i>
-                        </button>
                     </li>
                     
                     <!-- User dropdown -->

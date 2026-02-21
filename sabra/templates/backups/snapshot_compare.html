@@ -37,6 +37,35 @@
     .diff-wrapper .diff_next {
         display: none;
     }
+    
+    /* Dark mode diff styles */
+    [data-bs-theme="dark"] .diff-wrapper {
+        background: #212529;
+        color: #e9ecef;
+    }
+    [data-bs-theme="dark"] .diff-wrapper table {
+        color: #e9ecef;
+    }
+    [data-bs-theme="dark"] .diff-wrapper .diff_add {
+        background-color: rgba(46, 160, 67, 0.15);
+        color: #7ee787;
+    }
+    [data-bs-theme="dark"] .diff-wrapper .diff_sub {
+        background-color: rgba(248, 81, 73, 0.15);
+        color: #f85149;
+    }
+    [data-bs-theme="dark"] .diff-wrapper .diff_chg {
+        background-color: rgba(210, 153, 34, 0.15);
+        color: #d29922;
+    }
+    [data-bs-theme="dark"] .diff-wrapper .diff_header {
+        background-color: #2b3035;
+        color: #adb5bd;
+    }
+    [data-bs-theme="dark"] .diff-wrapper td,
+    [data-bs-theme="dark"] .diff-wrapper th {
+        border-color: #343a40;
+    }
 </style>
 {% endblock %}
 

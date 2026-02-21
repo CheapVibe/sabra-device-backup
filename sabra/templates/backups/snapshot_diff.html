@@ -41,6 +41,38 @@
         background-color: #e9ecef;
         font-weight: bold;
     }
+    
+    /* Dark mode diff styles */
+    [data-bs-theme="dark"] .diff-table {
+        color: #e9ecef;
+    }
+    [data-bs-theme="dark"] .diff-line-num {
+        background: #2b3035;
+        color: #8b949e;
+        border-right: 1px solid #343a40;
+    }
+    [data-bs-theme="dark"] .diff-add {
+        background-color: rgba(46, 160, 67, 0.15);
+    }
+    [data-bs-theme="dark"] .diff-add td:not(.diff-line-num) {
+        background-color: rgba(46, 160, 67, 0.15);
+        color: #7ee787;
+    }
+    [data-bs-theme="dark"] .diff-remove {
+        background-color: rgba(248, 81, 73, 0.15);
+    }
+    [data-bs-theme="dark"] .diff-remove td:not(.diff-line-num) {
+        background-color: rgba(248, 81, 73, 0.15);
+        color: #f85149;
+    }
+    [data-bs-theme="dark"] .diff-context td {
+        background-color: #212529;
+        color: #e9ecef;
+    }
+    [data-bs-theme="dark"] .diff-header {
+        background-color: #2b3035;
+        color: #adb5bd;
+    }
 </style>
 {% endblock %}
 
