@@ -1,0 +1,577 @@
+{% extends 'base.html' %}
+{% load log_tags %}
+
+{% block title %}System Logs - Sabra Device Backup{% endblock %}
+
+{% block extra_css %}
+<style>
+    .log-container {
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        font-size: 0.82rem;
+        line-height: 1.5;
+        background-color: #1a1d21;
+        color: #e4e6e9;
+        border-radius: 0.5rem;
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+    .log-entry {
+        padding: 8px 16px;
+        border-bottom: 1px solid #2d3238;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .log-entry:hover {
+        background-color: #252a30;
+    }
+    .log-entry:last-child {
+        border-bottom: none;
+    }
+    .log-time {
+        color: #6c7680;
+        white-space: nowrap;
+        font-size: 0.78rem;
+        min-width: 140px;
+    }
+    .log-category {
+        min-width: 85px;
+    }
+    .log-level {
+        display: inline-block;
+        min-width: 70px;
+        text-align: center;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+    }
+    .log-level-debug { background: #4a5568; color: #e2e8f0; }
+    .log-level-info { background: #2b6cb0; color: #fff; }
+    .log-level-warning { background: #dd6b20; color: #fff; }
+    .log-level-error { background: #c53030; color: #fff; }
+    .log-level-critical { background: #742a2a; color: #fff; }
+    .log-level-success { background: #276749; color: #fff; }
+    .log-message {
+        flex: 1;
+        word-break: break-word;
+    }
+    .log-source {
+        color: #718096;
+        font-size: 0.75rem;
+    }
+    .log-details {
+        margin-top: 4px;
+        padding: 6px 10px;
+        background: rgba(0,0,0,0.3);
+        border-radius: 4px;
+        font-size: 0.75rem;
+        color: #a0aec0;
+    }
+    .stat-card {
+        border: none;
+        border-radius: 12px;
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+    .category-btn {
+        border-radius: 20px;
+        padding: 6px 14px;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+    .category-btn.active {
+        font-weight: 600;
+    }
+    .filter-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    .empty-logs {
+        padding: 60px 20px;
+        text-align: center;
+        color: #6c7680;
+    }
+    .empty-logs i {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+    @keyframes pulse-dot {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+    .live-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #48bb78;
+        border-radius: 50%;
+        animation: pulse-dot 1.5s infinite;
+        margin-right: 6px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="bi bi-journal-code me-2"></i>System Logs</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Logs</li>
+            </ol>
+        </nav>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary" id="refreshLogs">
+            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+        </button>
+        <button type="button" class="btn btn-outline-success" id="autoRefreshToggle">
+            <span class="live-indicator d-none"></span>
+            <i class="bi bi-broadcast me-1"></i> Live
+        </button>
+        <div class="dropdown">
+            <button class="btn btn-outline-danger dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-trash me-1"></i> Clear
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="#" onclick="clearLogs(7)">Older than 7 days</a></li>
+                <li><a class="dropdown-item" href="#" onclick="clearLogs(30)">Older than 30 days</a></li>
+                <li><a class="dropdown-item" href="#" onclick="clearLogs(90)">Older than 90 days</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row g-3 mb-4">
+    <div class="col">
+        <div class="card stat-card bg-light">
+            <div class="card-body text-center py-3">
+                <div class="fs-3 fw-bold text-dark">{{ stats.total|default:0 }}</div>
+                <div class="text-muted small">Total Logs</div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card stat-card" style="background: linear-gradient(135deg, #c6f6d5 0%, #9ae6b4 100%);">
+            <div class="card-body text-center py-3">
+                <div class="fs-3 fw-bold text-success">{{ stats.success|default:0 }}</div>
+                <div class="text-muted small">Success</div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card stat-card" style="background: linear-gradient(135deg, #bee3f8 0%, #90cdf4 100%);">
+            <div class="card-body text-center py-3">
+                <div class="fs-3 fw-bold text-info">{{ stats.info|default:0 }}</div>
+                <div class="text-muted small">Info</div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card stat-card" style="background: linear-gradient(135deg, #feebc8 0%, #fbd38d 100%);">
+            <div class="card-body text-center py-3">
+                <div class="fs-3 fw-bold text-warning">{{ stats.warning|default:0 }}</div>
+                <div class="text-muted small">Warnings</div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card stat-card" style="background: linear-gradient(135deg, #fed7d7 0%, #fc8181 100%);">
+            <div class="card-body text-center py-3">
+                <div class="fs-3 fw-bold text-danger">{{ stats.error|default:0 }}</div>
+                <div class="text-muted small">Errors</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Mode Tabs -->
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link {% if view_mode == 'database' %}active{% endif %}" 
+           href="?view=database&category={{ current_category }}&level={{ current_level }}">
+            <i class="bi bi-database me-1"></i> Application Logs
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if view_mode == 'file' %}active{% endif %}" 
+           href="?view=file&file_source={{ file_source }}">
+            <i class="bi bi-file-text me-1"></i> File Logs
+        </a>
+    </li>
+</ul>
+
+{% if view_mode == 'database' %}
+<!-- Category Filter Pills -->
+<div class="mb-3 d-flex flex-wrap gap-2">
+    {% for key, cat in categories.items %}
+    <a href="?view=database&category={{ key }}&level={{ current_level }}&search={{ current_search }}&limit={{ current_limit }}" 
+       class="btn category-btn {% if current_category == key %}btn-primary active{% else %}btn-outline-secondary{% endif %}">
+        <i class="{{ cat.icon }} me-1"></i> {{ cat.name }}
+    </a>
+    {% endfor %}
+</div>
+
+<!-- Filters -->
+<div class="card filter-card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <input type="hidden" name="view" value="database">
+            <input type="hidden" name="category" value="{{ current_category }}">
+            
+            <div class="col-md-2">
+                <label class="form-label small text-muted">Level</label>
+                <select name="level" class="form-select form-select-sm">
+                    <option value="all" {% if current_level == 'all' %}selected{% endif %}>All Levels</option>
+                    <option value="success" {% if current_level == 'success' %}selected{% endif %}>Success</option>
+                    <option value="info" {% if current_level == 'info' %}selected{% endif %}>Info</option>
+                    <option value="warning" {% if current_level == 'warning' %}selected{% endif %}>Warning</option>
+                    <option value="error" {% if current_level == 'error' %}selected{% endif %}>Error</option>
+                    <option value="critical" {% if current_level == 'critical' %}selected{% endif %}>Critical</option>
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label small text-muted">Device</label>
+                <select name="device" class="form-select form-select-sm">
+                    <option value="">All Devices</option>
+                    {% for device in devices %}
+                    <option value="{{ device.pk }}" {% if current_device == device.pk|stringformat:"s" %}selected{% endif %}>
+                        {{ device.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label small text-muted">Job</label>
+                <select name="job" class="form-select form-select-sm">
+                    <option value="">All Jobs</option>
+                    {% for job in jobs %}
+                    <option value="{{ job.pk }}" {% if current_job == job.pk|stringformat:"s" %}selected{% endif %}>
+                        {{ job.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label small text-muted">Limit</label>
+                <select name="limit" class="form-select form-select-sm">
+                    <option value="50" {% if current_limit == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if current_limit == 100 %}selected{% endif %}>100</option>
+                    <option value="250" {% if current_limit == 250 %}selected{% endif %}>250</option>
+                    <option value="500" {% if current_limit == 500 %}selected{% endif %}>500</option>
+                    <option value="1000" {% if current_limit == 1000 %}selected{% endif %}>1000</option>
+                </select>
+            </div>
+            
+            <div class="col-md-3">
+                <label class="form-label small text-muted">Search</label>
+                <div class="input-group input-group-sm">
+                    <input type="text" name="search" class="form-control" placeholder="Search messages..." value="{{ current_search }}">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="col-md-1">
+                <a href="?view=database" class="btn btn-sm btn-outline-secondary w-100">
+                    <i class="bi bi-x-lg"></i> Clear
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Database Logs Display -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <h6 class="mb-0">
+            <i class="bi bi-list-ul me-2"></i>
+            {% for key, cat in categories.items %}
+                {% if key == current_category %}{{ cat.name }}{% endif %}
+            {% endfor %}
+        </h6>
+        <span class="badge bg-secondary" id="logCount">{{ logs|length }} entries</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="log-container" id="logContainer">
+            {% if logs %}
+                {% for log in logs %}
+                <div class="log-entry" data-log-id="{{ log.id }}">
+                    <span class="log-time">{{ log.created_at|sabra_datetime }}</span>
+                    <span class="log-category">
+                        <span class="badge bg-{{ log.category|category_color }} bg-opacity-75">
+                            <i class="{{ log.category|category_icon }} me-1"></i>{{ log.category|title }}
+                        </span>
+                    </span>
+                    <span class="log-level log-level-{{ log.level }}">{{ log.level }}</span>
+                    <div class="log-message">
+                        {% if current_search %}
+                            {{ log.message|highlight_search:current_search }}
+                        {% else %}
+                            {{ log.message }}
+                        {% endif %}
+                        {% if log.device or log.job or log.user %}
+                        <div class="log-source mt-1">
+                            {% if log.device %}<span class="me-2"><i class="bi bi-hdd-network"></i> {{ log.device.name }}</span>{% endif %}
+                            {% if log.job %}<span class="me-2"><i class="bi bi-calendar"></i> {{ log.job.name }}</span>{% endif %}
+                            {% if log.user %}<span><i class="bi bi-person"></i> {{ log.user.username }}</span>{% endif %}
+                        </div>
+                        {% endif %}
+                        {% if log.details %}
+                        <div class="log-details">
+                            <code>{{ log.details }}</code>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-logs">
+                    <i class="bi bi-journal-x"></i>
+                    <h5>No Log Entries Found</h5>
+                    <p class="text-muted">
+                        {% if current_search or current_level != 'all' or current_category != 'all' %}
+                            Try adjusting your filters to see more results.
+                        {% else %}
+                            Log entries will appear here as the application runs.
+                            <br>Backups, schedules, and system events will be recorded.
+                        {% endif %}
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- File Logs View -->
+<div class="card filter-card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <input type="hidden" name="view" value="file">
+            
+            <div class="col-md-3">
+                <label class="form-label small text-muted">Log File</label>
+                <select name="file_source" class="form-select form-select-sm" onchange="this.form.submit()">
+                    {% for key, path in file_sources.items %}
+                    <option value="{{ key }}" {% if file_source == key %}selected{% endif %}>
+                        {{ key|title|underscore_to_space }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label small text-muted">Level</label>
+                <select name="level" class="form-select form-select-sm">
+                    <option value="all" {% if current_level == 'all' %}selected{% endif %}>All Levels</option>
+                    <option value="DEBUG" {% if current_level == 'DEBUG' %}selected{% endif %}>DEBUG</option>
+                    <option value="INFO" {% if current_level == 'INFO' %}selected{% endif %}>INFO</option>
+                    <option value="WARNING" {% if current_level == 'WARNING' %}selected{% endif %}>WARNING</option>
+                    <option value="ERROR" {% if current_level == 'ERROR' %}selected{% endif %}>ERROR</option>
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label small text-muted">Lines</label>
+                <select name="limit" class="form-select form-select-sm">
+                    <option value="50" {% if current_limit == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if current_limit == 100 %}selected{% endif %}>100</option>
+                    <option value="250" {% if current_limit == 250 %}selected{% endif %}>250</option>
+                    <option value="500" {% if current_limit == 500 %}selected{% endif %}>500</option>
+                </select>
+            </div>
+            
+            <div class="col-md-4">
+                <label class="form-label small text-muted">Search</label>
+                <div class="input-group input-group-sm">
+                    <input type="text" name="search" class="form-control" placeholder="Filter log lines..." value="{{ current_search }}">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="col-md-1">
+                <a href="?view=file" class="btn btn-sm btn-outline-secondary w-100">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <div>
+            <h6 class="mb-0"><i class="bi bi-file-text me-2"></i>{{ file_source|title|underscore_to_space }} Log</h6>
+            <small class="text-muted font-monospace">{{ file_log_path|truncate_path:60 }}</small>
+        </div>
+        <span class="badge bg-secondary">{{ file_logs|length }} lines</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="log-container" id="logContainer">
+            {% if file_logs %}
+                {% for entry in file_logs %}
+                <div class="log-entry">
+                    {% if entry.timestamp %}
+                    <span class="log-time">{{ entry.timestamp }}</span>
+                    {% endif %}
+                    <span class="log-level log-level-{{ entry.level|lower }}">{{ entry.level }}</span>
+                    <span class="log-message">
+                        {% if current_search %}
+                            {{ entry.message|highlight_search:current_search }}
+                        {% else %}
+                            {{ entry.message }}
+                        {% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-logs">
+                    <i class="bi bi-file-earmark-x"></i>
+                    <h5>No Log File Found</h5>
+                    <p class="text-muted">
+                        The log file <code>{{ file_log_path }}</code> does not exist or is empty.
+                        <br>Make sure logging is configured in your Django settings.
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Help Section -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Log Categories Guide</h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-primary me-2"><i class="bi bi-archive"></i></span>
+                    <strong>Backup</strong>
+                </div>
+                <small class="text-muted">Device backup start, completion, and failure events</small>
+            </div>
+            <div class="col-md-3">
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-info me-2"><i class="bi bi-calendar-check"></i></span>
+                    <strong>Schedule</strong>
+                </div>
+                <small class="text-muted">Scheduled job execution and completion logs</small>
+            </div>
+            <div class="col-md-3">
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-warning me-2"><i class="bi bi-shield-lock"></i></span>
+                    <strong>Authentication</strong>
+                </div>
+                <small class="text-muted">Login attempts, session events, permission changes</small>
+            </div>
+            <div class="col-md-3">
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-dark me-2"><i class="bi bi-gear"></i></span>
+                    <strong>System</strong>
+                </div>
+                <small class="text-muted">Application startup, configuration changes, maintenance</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const logContainer = document.getElementById('logContainer');
+    const refreshBtn = document.getElementById('refreshLogs');
+    const autoRefreshBtn = document.getElementById('autoRefreshToggle');
+    const liveIndicator = autoRefreshBtn.querySelector('.live-indicator');
+    let autoRefreshInterval = null;
+    let latestLogId = 0;
+    
+    // Get latest log ID
+    const firstLog = document.querySelector('[data-log-id]');
+    if (firstLog) {
+        latestLogId = parseInt(firstLog.dataset.logId);
+    }
+    
+    // Scroll to bottom on load
+    if (logContainer) {
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+    
+    // Manual refresh
+    refreshBtn.addEventListener('click', function() {
+        location.reload();
+    });
+    
+    // Auto-refresh toggle
+    autoRefreshBtn.addEventListener('click', function() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+            this.innerHTML = '<span class="live-indicator d-none"></span><i class="bi bi-broadcast me-1"></i> Live';
+            this.classList.remove('btn-success');
+            this.classList.add('btn-outline-success');
+        } else {
+            autoRefreshInterval = setInterval(pollNewLogs, 3000);
+            this.innerHTML = '<span class="live-indicator"></span> Live';
+            this.classList.remove('btn-outline-success');
+            this.classList.add('btn-success');
+            pollNewLogs();
+        }
+    });
+    
+    // Poll for new logs
+    function pollNewLogs() {
+        const params = new URLSearchParams(window.location.search);
+        params.set('since_id', latestLogId);
+        
+        fetch(`{% url 'logs_api' %}?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.entries && data.entries.length > 0) {
+                    // Reload to show new entries
+                    location.reload();
+                }
+            })
+            .catch(console.error);
+    }
+});
+
+// Clear logs function
+function clearLogs(days) {
+    if (!confirm(`Delete all logs older than ${days} days?`)) return;
+    
+    fetch('{% url "logs_clear" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: `days=${days}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        }
+    })
+    .catch(console.error);
+}
+</script>
+{% endblock %}

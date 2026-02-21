@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ session.name }} - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ session.name }}</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'activities:session_list' %}">CLI Sessions</a></li>
+            <li class="breadcrumb-item active">{{ session.name }}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Session Info</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Status</dt>
+                    <dd class="col-sm-7">
+                        {% if session.status == 'completed' %}
+                        <span class="badge bg-success">Completed</span>
+                        {% elif session.status == 'running' %}
+                        <span class="badge bg-primary">Running</span>
+                        {% else %}
+                        <span class="badge bg-danger">Failed</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-5">Started</dt>
+                    <dd class="col-sm-7">{{ session.started_at|sabra_compact }}</dd>
+                    
+                    <dt class="col-sm-5">Duration</dt>
+                    <dd class="col-sm-7">{{ session.duration|default:"-" }}</dd>
+                    
+                    <dt class="col-sm-5">By</dt>
+                    <dd class="col-sm-7">{{ session.created_by.username }}</dd>
+                </dl>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Commands</h5>
+            </div>
+            <div class="card-body">
+                {% for cmd in session.commands %}
+                <code class="d-block mb-1">{{ cmd }}</code>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-9">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Results</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="accordion" id="resultsAccordion">
+                    {% for result in results %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#result-{{ result.pk }}">
+                                <span class="me-3">
+                                    {% if result.status == 'success' %}
+                                    <i class="bi bi-check-circle text-success"></i>
+                                    {% else %}
+                                    <i class="bi bi-x-circle text-danger"></i>
+                                    {% endif %}
+                                </span>
+                                <strong>{{ result.device.name }}</strong>
+                                <small class="text-muted ms-2">{{ result.device.hostname }}</small>
+                            </button>
+                        </h2>
+                        <div id="result-{{ result.pk }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}">
+                            <div class="accordion-body">
+                                <div class="mb-2">
+                                    <a href="{% url 'activities:result_detail' result.pk %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye me-1"></i>View Full Output
+                                    </a>
+                                    <a href="{% url 'activities:output_compare' %}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-file-diff me-1"></i>Compare Outputs
+                                    </a>
+                                </div>
+                                <pre class="config-view mb-0">{{ result.output }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center text-muted py-4">
+                        No results yet
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

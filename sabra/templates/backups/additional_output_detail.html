@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block title %}Additional Commands Details - {{ output.device.name }} - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Additional Commands Details</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:device_detail' output.device.pk %}">{{ output.device.name }}</a></li>
+                <li class="breadcrumb-item active">Additional Commands</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'backups:additional_output_view' output.pk %}" class="btn btn-primary">
+            <i class="bi bi-eye me-1"></i> View Output
+        </a>
+        {% if output.has_changed and output.previous_output %}
+        <a href="{% url 'backups:additional_output_diff' output.pk %}" class="btn btn-warning">
+            <i class="bi bi-file-diff me-1"></i> View Diff
+        </a>
+        {% endif %}
+        <a href="{% url 'backups:additional_output_download' output.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-download me-1"></i> Download
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Output Information</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">Device</dt>
+                    <dd class="col-sm-9">
+                        <a href="{% url 'inventory:device_detail' output.device.pk %}">{{ output.device.name }}</a>
+                        <span class="text-muted">({{ output.device.hostname }})</span>
+                    </dd>
+                    
+                    <dt class="col-sm-3">Vendor</dt>
+                    <dd class="col-sm-9">{{ output.device.get_vendor_display }}</dd>
+                    
+                    <dt class="col-sm-3">Captured At</dt>
+                    <dd class="col-sm-9">{{ output.created_at|sabra_datetime }}</dd>
+                    
+                    <dt class="col-sm-3">Status</dt>
+                    <dd class="col-sm-9">
+                        {% if output.status == 'success' %}
+                        <span class="badge bg-success">Success</span>
+                        {% elif output.status == 'partial' %}
+                        <span class="badge bg-warning text-dark">Partial Success</span>
+                        {% else %}
+                        <span class="badge bg-danger">Failed</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-3">Commands</dt>
+                    <dd class="col-sm-9">{{ output.get_command_count }} commands executed</dd>
+                    
+                    <dt class="col-sm-3">Output Size</dt>
+                    <dd class="col-sm-9">{{ output.output_size|filesizeformat }}</dd>
+                    
+                    <dt class="col-sm-3">Duration</dt>
+                    <dd class="col-sm-9">{{ output.execution_duration|floatformat:2 }} seconds</dd>
+                    
+                    <dt class="col-sm-3">Changed</dt>
+                    <dd class="col-sm-9">
+                        {% if output.has_changed %}
+                        <span class="badge bg-warning text-dark">Yes - Output differs from previous</span>
+                        {% else %}
+                        <span class="text-muted">No changes detected</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-3">Hash</dt>
+                    <dd class="col-sm-9"><code>{{ output.output_hash|truncatechars:32 }}</code></dd>
+                </dl>
+                
+                {% if output.error_message %}
+                <hr>
+                <div class="alert alert-danger mb-0">
+                    <strong><i class="bi bi-exclamation-triangle me-1"></i> Error:</strong>
+                    <pre class="mb-0 mt-2">{{ output.error_message }}</pre>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Commands Executed -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Commands Executed</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    {% for cmd in output.commands_executed.splitlines %}
+                    {% if cmd.strip %}
+                    <li class="list-group-item font-monospace">
+                        <i class="bi bi-chevron-right text-muted me-2"></i>{{ cmd }}
+                    </li>
+                    {% endif %}
+                    {% empty %}
+                    <li class="list-group-item text-muted">No commands recorded</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Other Outputs -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">History</h5>
+                <a href="{% url 'backups:additional_output_list' output.device.pk %}" class="btn btn-sm btn-outline-primary">
+                    View All
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for o in other_outputs %}
+                    <a href="{% url 'backups:additional_output_detail' o.pk %}" 
+                       class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <small>{{ o.created_at|sabra_datetime_short }}</small>
+                                <br>
+                                <span class="text-muted small">{{ o.output_size|filesizeformat }}</span>
+                            </div>
+                            {% if o.has_changed %}
+                            <span class="badge bg-warning text-dark">Changed</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="list-group-item text-muted text-center py-4">
+                        <i class="bi bi-clock-history fs-4 d-block mb-2"></i>
+                        No previous captures
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Related Backup -->
+        {% if output.job_execution %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Related Backup</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2">
+                    <strong>Job:</strong> {{ output.job_execution.job.name }}
+                </p>
+                <p class="mb-2">
+                    <strong>Execution:</strong> {{ output.job_execution.started_at|sabra_compact }}
+                </p>
+                <a href="{% url 'backups:execution_detail' output.job_execution.pk %}" class="btn btn-sm btn-outline-primary">
+                    View Execution
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

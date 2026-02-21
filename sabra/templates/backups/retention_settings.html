@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Retention Policy - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Retention Policy</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Retention Policy</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'backups:retention_preview' %}" class="btn btn-outline-primary me-2">
+            <i class="bi bi-eye me-1"></i> Preview
+        </a>
+        <form action="{% url 'backups:retention_run' %}" method="post" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-warning" onclick="return confirm('Run retention policy now? This will soft-delete eligible snapshots.');">
+                <i class="bi bi-play-fill me-1"></i> Run Now
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Settings Form -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-gear me-2"></i>Settings
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {% crispy form %}
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Status Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-2"></i>Current Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Total Snapshots</span>
+                    <strong>{{ stats.total_snapshots }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Soft Deleted</span>
+                    <strong>{{ stats.soft_deleted }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Protected</span>
+                    <strong>{{ stats.protected }}</strong>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Policy Status</span>
+                    {% if object.is_enabled %}
+                    <span class="badge bg-success">Enabled</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Disabled</span>
+                    {% endif %}
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Last Run</span>
+                    <span>
+                        {% if object.last_run_at %}
+                        {{ object.last_run_at|timesince }} ago
+                        {% if object.last_run_success %}
+                        <i class="bi bi-check-circle text-success"></i>
+                        {% else %}
+                        <i class="bi bi-x-circle text-danger"></i>
+                        {% endif %}
+                        {% else %}
+                        <span class="text-muted">Never</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Preview Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-lightning me-2"></i>Preview (Current Settings)
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Would Soft Delete</span>
+                    <strong class="text-warning">{{ preview.soft_delete_count }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Would Permanently Delete</span>
+                    <strong class="text-danger">{{ preview.permanent_delete_count }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Protected (Kept)</span>
+                    <strong>{{ preview.protected_kept }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Changed (Kept)</span>
+                    <strong>{{ preview.changed_kept }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Minimum (Kept)</span>
+                    <strong>{{ preview.minimum_kept }}</strong>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Storage to Free</span>
+                    <strong>{{ preview.storage_to_free }}</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">Devices Affected</span>
+                    <strong>{{ preview.devices_affected }}</strong>
+                </div>
+                <hr>
+                <a href="{% url 'backups:retention_preview' %}" class="btn btn-sm btn-outline-primary w-100">
+                    <i class="bi bi-eye me-1"></i> View Details
+                </a>
+            </div>
+        </div>
+        
+        <!-- Quick Links -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-link-45deg me-2"></i>Quick Links
+                </h5>
+            </div>
+            <div class="list-group list-group-flush">
+                <a href="{% url 'backups:retention_history' %}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-clock-history me-2"></i>Execution History
+                </a>
+                <a href="{% url 'backups:retention_deleted_snapshots' %}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-trash3 me-2"></i>Deleted Snapshots ({{ stats.soft_deleted }})
+                </a>
+                <a href="{% url 'backups:snapshot_list' %}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-file-earmark-code me-2"></i>All Snapshots
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Executions -->
+{% if recent_executions %}
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-clock-history me-2"></i>Recent Executions
+        </h5>
+        <a href="{% url 'backups:retention_history' %}" class="btn btn-sm btn-outline-primary">View All</a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Started</th>
+                        <th>Trigger</th>
+                        <th>Soft Deleted</th>
+                        <th>Perm Deleted</th>
+                        <th>Storage Freed</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exec in recent_executions %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'backups:retention_execution_detail' exec.pk %}">
+                                {{ exec.started_at|date:"d M Y H:i" }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if exec.trigger_type == 'manual' %}
+                            <span class="badge bg-info">Manual</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Scheduled</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ exec.snapshots_soft_deleted }}</td>
+                        <td>{{ exec.snapshots_permanently_deleted }}</td>
+                        <td>{{ exec.storage_freed_display }}</td>
+                        <td>
+                            {% if exec.status == 'completed' %}
+                            <span class="badge bg-success">Completed</span>
+                            {% elif exec.status == 'running' %}
+                            <span class="badge bg-warning">Running</span>
+                            {% else %}
+                            <span class="badge bg-danger">Failed</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Preset buttons for retention days
+document.querySelectorAll('.retention-preset').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.getElementById('id_retention_days').value = this.dataset.days;
+    });
+});
+</script>
+{% endblock %}

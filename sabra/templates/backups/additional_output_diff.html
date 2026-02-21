@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block title %}Additional Commands Diff - {{ output.device.name }} - Sabra Device Backup{% endblock %}
+
+{% block extra_css %}
+<style>
+    .diff-table {
+        font-family: 'SFMono-Regular', Consolas, monospace;
+        font-size: 0.8rem;
+        line-height: 1.4;
+    }
+    .diff-table td {
+        padding: 0 8px;
+        white-space: pre-wrap;
+        word-break: break-all;
+        vertical-align: top;
+    }
+    .diff-line-num {
+        width: 50px;
+        text-align: right;
+        color: #6c757d;
+        background: #f1f3f5;
+        user-select: none;
+    }
+    .diff-equal td:not(.diff-line-num) {
+        background-color: #fff;
+    }
+    .diff-insert {
+        background-color: #d4edda;
+    }
+    .diff-insert td:not(.diff-line-num) {
+        background-color: #d4edda;
+    }
+    .diff-delete {
+        background-color: #f8d7da;
+    }
+    .diff-delete td:not(.diff-line-num) {
+        background-color: #f8d7da;
+    }
+    .diff-change {
+        background-color: #fff3cd;
+    }
+    .diff-change td:not(.diff-line-num) {
+        background-color: #fff3cd;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Additional Commands Diff</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:device_detail' output.device.pk %}">{{ output.device.name }}</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'backups:additional_output_view' output.pk %}">Additional Commands</a></li>
+                <li class="breadcrumb-item active">Diff</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'backups:additional_output_view' output.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-file-code me-1"></i> View Full Output
+        </a>
+        <a href="{% url 'backups:additional_output_download' output.pk %}" class="btn btn-primary">
+            <i class="bi bi-download me-1"></i> Download
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Comparison</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong class="text-danger">Previous</strong>
+                    <br>
+                    <small class="text-muted">{{ prev_output.created_at|sabra_datetime }}</small>
+                </div>
+                <div class="mb-0">
+                    <strong class="text-success">Current</strong>
+                    <br>
+                    <small class="text-muted">{{ output.created_at|sabra_datetime }}</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="stat-value text-success">{{ lines_added }}</div>
+                        <div class="stat-label">Added</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-value text-danger">{{ lines_removed }}</div>
+                        <div class="stat-label">Removed</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Legend</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-success me-2">&nbsp;&nbsp;&nbsp;</span>
+                    Added lines
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-danger me-2">&nbsp;&nbsp;&nbsp;</span>
+                    Removed lines
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-warning me-2">&nbsp;&nbsp;&nbsp;</span>
+                    Changed lines
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-9">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Side-by-Side Diff</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm diff-table mb-0">
+                        <thead>
+                            <tr>
+                                <th class="diff-line-num" style="width: 50px;">#</th>
+                                <th style="width: 45%;">Previous</th>
+                                <th class="diff-line-num" style="width: 50px;">#</th>
+                                <th style="width: 45%;">Current</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for line in diff_lines %}
+                            <tr class="diff-{{ line.type }}">
+                                <td class="diff-line-num">{{ line.left_line|default:"" }}</td>
+                                <td>{{ line.left_content }}</td>
+                                <td class="diff-line-num">{{ line.right_line|default:"" }}</td>
+                                <td>{{ line.right_content }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">
+                                    No differences found
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

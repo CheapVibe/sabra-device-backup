@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Quick Backup - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Quick Backup</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'backups:snapshot_list' %}">Snapshots</a></li>
+            <li class="breadcrumb-item active">Quick Backup</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-lightning me-2"></i>Run Ad-Hoc Backup
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Run an immediate backup without creating a scheduled job.
+                    Select individual devices or entire groups.
+                </p>
+                
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {{ form.non_field_errors }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Select Devices</h6>
+                            <div class="border rounded p-3" style="max-height: 400px; overflow-y: auto;">
+                                {% for device in form.devices %}
+                                <div class="form-check">
+                                    {{ device.tag }}
+                                    <label class="form-check-label" for="{{ device.id_for_label }}">
+                                        {{ device.choice_label }}
+                                    </label>
+                                </div>
+                                {% empty %}
+                                <p class="text-muted mb-0">No active devices</p>
+                                {% endfor %}
+                            </div>
+                            {% if form.devices.errors %}
+                            <div class="text-danger small mt-1">{{ form.devices.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6>Or Select Groups</h6>
+                            <div class="border rounded p-3" style="max-height: 400px; overflow-y: auto;">
+                                {% for group in form.device_groups %}
+                                <div class="form-check">
+                                    {{ group.tag }}
+                                    <label class="form-check-label" for="{{ group.id_for_label }}">
+                                        {{ group.choice_label }}
+                                    </label>
+                                </div>
+                                {% empty %}
+                                <p class="text-muted mb-0">No groups defined</p>
+                                {% endfor %}
+                            </div>
+                            {% if form.device_groups.errors %}
+                            <div class="text-danger small mt-1">{{ form.device_groups.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="{% url 'backups:snapshot_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-play-fill me-1"></i> Run Backup Now
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-2"></i>About Quick Backup
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    Quick backups are immediate, one-time operations. They don't create 
+                    scheduled jobs but will store snapshots just like regular backups.
+                </p>
+                <p class="text-muted small mb-0">
+                    For recurring backups, create a 
+                    <a href="{% url 'backups:job_create' %}">backup job</a> with a schedule.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

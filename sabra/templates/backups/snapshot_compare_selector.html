@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+
+{% block title %}Compare Snapshots - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Compare Configuration Snapshots</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'backups:snapshot_list' %}">Snapshots</a></li>
+            <li class="breadcrumb-item active">Compare</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row g-4">
+    <!-- Step 1: Select Device -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <span class="badge bg-primary me-2">1</span>
+                    Select Device
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="get">
+                    <div class="mb-3">
+                        <label class="form-label">Device</label>
+                        <select name="device" class="form-select" onchange="this.form.submit()">
+                            <option value="">-- Select a device --</option>
+                            {% for device in devices %}
+                            <option value="{{ device.pk }}" {% if selected_device.pk == device.pk %}selected{% endif %}>
+                                {{ device.name }} ({{ device.hostname }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+                
+                {% if selected_device %}
+                <div class="alert alert-info mb-0 mt-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Selected: <strong>{{ selected_device.name }}</strong>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Step 2: Select Snapshots -->
+    <div class="col-md-8">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <span class="badge bg-primary me-2">2</span>
+                    Select Two Snapshots to Compare
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if snapshots %}
+                <form method="post" id="compareForm">
+                    {% csrf_token %}
+                    
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label"><span class="badge bg-danger me-1">A</span> Older Snapshot</label>
+                            <select name="snapshot1" class="form-select" required id="snapshot1">
+                                <option value="">-- Select snapshot --</option>
+                                {% for snapshot in snapshots %}
+                                <option value="{{ snapshot.pk }}">
+                                    {{ snapshot.created_at|sabra_datetime }}
+                                    {% if snapshot.has_changed %}(Changed){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label"><span class="badge bg-success me-1">B</span> Newer Snapshot</label>
+                            <select name="snapshot2" class="form-select" required id="snapshot2">
+                                <option value="">-- Select snapshot --</option>
+                                {% for snapshot in snapshots %}
+                                <option value="{{ snapshot.pk }}">
+                                    {{ snapshot.created_at|sabra_datetime }}
+                                    {% if snapshot.has_changed %}(Changed){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-file-diff me-2"></i>Compare Snapshots
+                    </button>
+                </form>
+                
+                <hr class="my-4">
+                
+                <h6 class="mb-3">Available Snapshots for {{ selected_device.name }}</h6>
+                <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Status</th>
+                                <th>Size</th>
+                                <th>Changed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for snapshot in snapshots %}
+                            <tr>
+                                <td>{{ snapshot.created_at|sabra_datetime }}</td>
+                                <td>
+                                    {% if snapshot.status == 'success' %}
+                                    <span class="badge bg-success">Success</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Failed</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ snapshot.config_size|filesizeformat }}</td>
+                                <td>
+                                    {% if snapshot.has_changed %}
+                                    <span class="badge bg-warning text-dark">Changed</span>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    {% if selected_device %}
+                    <i class="bi bi-exclamation-circle fs-1 d-block mb-3"></i>
+                    <p>No successful snapshots found for this device.</p>
+                    {% else %}
+                    <i class="bi bi-arrow-left-circle fs-1 d-block mb-3"></i>
+                    <p>Please select a device first to view available snapshots.</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Compare Links -->
+{% if snapshots and snapshots|length > 1 %}
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-lightning me-2"></i>Quick Compare (Recent Changes)
+        </h5>
+    </div>
+    <div class="card-body">
+        <p class="text-muted mb-3">Click to compare consecutive backups with detected changes:</p>
+        <div class="d-flex flex-wrap gap-2">
+            {% for snapshot in snapshots %}
+                {% if snapshot.has_changed and snapshot.previous_snapshot %}
+                <a href="{% url 'backups:snapshot_compare' pk1=snapshot.previous_snapshot.pk pk2=snapshot.pk %}" class="btn btn-sm btn-outline-warning">
+                    {{ snapshot.created_at|sabra_compact }}
+                    <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('compareForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const s1 = document.getElementById('snapshot1').value;
+            const s2 = document.getElementById('snapshot2').value;
+            
+            if (s1 === s2) {
+                e.preventDefault();
+                alert('Please select two different snapshots to compare.');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

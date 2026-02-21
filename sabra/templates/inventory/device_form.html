@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if form_title %}{{ form_title }}{% elif object %}Edit{% else %}Add{% endif %} Device - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if form_title %}{{ form_title }}{% elif object %}Edit Device{% else %}Add Device{% endif %}</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'inventory:device_list' %}">Devices</a></li>
+            <li class="breadcrumb-item active">{% if copy_source %}Copy{% elif object %}{{ object.name }}{% else %}Add{% endif %}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {% crispy form %}
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Help</h5>
+            </div>
+            <div class="card-body">
+                <h6>Vendor Selection</h6>
+                <p class="text-muted small">Select the correct vendor to ensure proper CLI commands are used for configuration backup.</p>
+                
+                <h6>Credentials</h6>
+                <p class="text-muted small">
+                    Credentials are stored encrypted. 
+                    <a href="{% url 'inventory:credential_create' %}">Create new credentials</a> if needed.
+                </p>
+                
+                <h6>SSH Port</h6>
+                <p class="text-muted small">Default is 22 for SSH. Change if your device uses a non-standard port.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

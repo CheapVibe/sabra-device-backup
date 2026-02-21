@@ -1,0 +1,390 @@
+{% extends 'base.html' %}
+
+{% block title %}Execution Details - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Execution Details</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'backups:execution_list' %}">Executions</a></li>
+            <li class="breadcrumb-item active">{{ execution.job.name }} - {{ execution.started_at|sabra_compact }}</li>
+        </ol>
+    </nav>
+</div>
+
+{% if execution.status == 'running' %}
+<!-- Real-time Progress Section (only shown for running jobs) -->
+<div class="card mb-4 border-primary" id="progressCard">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            Job In Progress
+        </h5>
+        <span class="badge bg-light text-primary" id="concurrencyBadge">
+            <i class="bi bi-lightning-charge me-1"></i>Concurrency: {{ execution.job.concurrency|default:5 }}
+        </span>
+    </div>
+    <div class="card-body">
+        <!-- Progress Bar -->
+        <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+                <span>Progress</span>
+                <span id="progressText">0 / {{ execution.total_devices }}</span>
+            </div>
+            <div class="progress" style="height: 24px;">
+                <div class="progress-bar bg-success" id="successBar" role="progressbar" style="width: 0%"></div>
+                <div class="progress-bar bg-danger" id="failedBar" role="progressbar" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <!-- Live Counters -->
+        <div class="row text-center mb-3" id="liveCounters">
+            <div class="col">
+                <div class="fs-4 fw-bold text-success" id="liveSuccess">0</div>
+                <small class="text-muted">Success</small>
+            </div>
+            <div class="col">
+                <div class="fs-4 fw-bold text-danger" id="liveFailed">0</div>
+                <small class="text-muted">Failed</small>
+            </div>
+            <div class="col">
+                <div class="fs-4 fw-bold text-warning" id="liveChanged">0</div>
+                <small class="text-muted">Changed</small>
+            </div>
+            <div class="col">
+                <div class="fs-4 fw-bold text-info" id="liveActive">0</div>
+                <small class="text-muted">Active</small>
+            </div>
+        </div>
+        
+        <!-- Currently Backing Up -->
+        <div class="mb-3">
+            <h6 class="text-muted mb-2"><i class="bi bi-arrow-repeat me-1"></i>Currently Backing Up</h6>
+            <div id="activeDevices" class="d-flex flex-wrap gap-2">
+                <span class="text-muted small">Waiting for updates...</span>
+            </div>
+        </div>
+        
+        <!-- Recent Activity -->
+        <div>
+            <h6 class="text-muted mb-2"><i class="bi bi-clock-history me-1"></i>Recent Activity</h6>
+            <div id="recentActivity" class="small" style="max-height: 150px; overflow-y: auto;">
+                <span class="text-muted">No activity yet</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <!-- Execution Summary -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Summary</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Job</dt>
+                    <dd class="col-sm-7">
+                        <a href="{% url 'backups:job_detail' execution.job.pk %}">{{ execution.job.name }}</a>
+                    </dd>
+                    
+                    <dt class="col-sm-5">Status</dt>
+                    <dd class="col-sm-7" id="statusBadge">
+                        {% if execution.status == 'completed' %}
+                        <span class="badge bg-success">Completed</span>
+                        {% elif execution.status == 'running' %}
+                        <span class="badge bg-primary">
+                            <span class="spinner-border spinner-border-sm me-1" style="width: 0.7rem; height: 0.7rem;"></span>
+                            Running
+                        </span>
+                        {% elif execution.status == 'failed' %}
+                        <span class="badge bg-danger">Failed</span>
+                        {% elif execution.status == 'partial' %}
+                        <span class="badge bg-warning">Partial</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ execution.status }}</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-5">Concurrency</dt>
+                    <dd class="col-sm-7">{{ execution.job.concurrency|default:5 }} devices</dd>
+                    
+                    <dt class="col-sm-5">Started</dt>
+                    <dd class="col-sm-7">{{ execution.started_at|sabra_datetime }}</dd>
+                    
+                    <dt class="col-sm-5">Completed</dt>
+                    <dd class="col-sm-7" id="completedAt">{{ execution.completed_at|sabra_datetime|default:"-" }}</dd>
+                    
+                    <dt class="col-sm-5">Duration</dt>
+                    <dd class="col-sm-7" id="duration">{{ execution.duration|default:"-" }}</dd>
+                </dl>
+            </div>
+        </div>
+        
+        <!-- Stats -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Results</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="stat-value text-success" id="successCount">{{ execution.successful_devices }}</div>
+                        <div class="stat-label">Success</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-value text-danger" id="failedCount">{{ execution.failed_devices }}</div>
+                        <div class="stat-label">Failed</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-value text-warning" id="changedCount">{{ execution.changed_devices }}</div>
+                        <div class="stat-label">Changed</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Error Log (if any) -->
+        <div class="card mt-4 border-danger" id="errorLogCard" {% if not execution.error_log %}style="display: none;"{% endif %}>
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0">Error Log</h5>
+            </div>
+            <div class="card-body">
+                <pre class="mb-0 small" id="errorLog">{{ execution.error_log }}</pre>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Snapshots Created -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Configuration Snapshots</h5>
+                {% if execution.status == 'running' %}
+                <span class="badge bg-secondary" id="snapshotCount">{{ snapshots|length }} loaded</span>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="snapshotsTable">
+                        <thead>
+                            <tr>
+                                <th>Device</th>
+                                <th>Status</th>
+                                <th>Size</th>
+                                <th>Changed</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="snapshotsBody">
+                            {% for snapshot in snapshots %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'inventory:device_detail' snapshot.device.pk %}">
+                                        {{ snapshot.device.name }}
+                                    </a>
+                                    <br>
+                                    <small class="text-muted">{{ snapshot.device.hostname }}</small>
+                                </td>
+                                <td>
+                                    {% if snapshot.status == 'success' %}
+                                    <span class="badge bg-success">Success</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Failed</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ snapshot.config_size|filesizeformat }}</td>
+                                <td>
+                                    {% if snapshot.has_changed %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>Changed
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">No change</span>
+                                    {% endif %}
+                                </td>
+                                <td class="action-buttons">
+                                    <a href="{% url 'backups:snapshot_view' snapshot.pk %}" class="btn btn-sm btn-outline-secondary" title="View">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'backups:additional_output_latest' snapshot.device.pk %}" class="btn btn-sm btn-outline-info" title="Additional Commands">
+                                        <i class="bi bi-terminal"></i>
+                                    </a>
+                                    {% if snapshot.has_changed %}
+                                    <a href="{% url 'backups:snapshot_diff' snapshot.pk %}" class="btn btn-sm btn-outline-warning" title="Diff">
+                                        <i class="bi bi-file-diff"></i>
+                                    </a>
+                                    {% endif %}
+                                    <a href="{% url 'backups:snapshot_download' snapshot.pk %}" class="btn btn-sm btn-outline-primary" title="Download">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr id="noSnapshotsRow">
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    {% if execution.status == 'running' %}
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                    Waiting for backups to complete...
+                                    {% else %}
+                                    No snapshots created
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if execution.status == 'running' %}
+<script>
+(function() {
+    const executionId = {{ execution.pk }};
+    const totalDevices = {{ execution.total_devices }};
+    const progressUrl = "{% url 'backups:execution_progress_api' execution.pk %}";
+    let pollInterval = null;
+    let lastCompletedCount = 0;
+    
+    function formatDuration(seconds) {
+        if (seconds < 60) return seconds.toFixed(1) + 's';
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return mins + 'm ' + secs + 's';
+    }
+    
+    function updateProgress() {
+        fetch(progressUrl)
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) return;
+                
+                const counters = data.counters;
+                const completed = counters.completed || 0;
+                const success = counters.success || 0;
+                const failed = counters.failed || 0;
+                const changed = counters.changed || 0;
+                const activeDevices = data.active_devices || [];
+                const recentCompleted = data.recent_completed || [];
+                
+                // Update progress bar
+                const successPct = (success / totalDevices) * 100;
+                const failedPct = (failed / totalDevices) * 100;
+                document.getElementById('successBar').style.width = successPct + '%';
+                document.getElementById('failedBar').style.width = failedPct + '%';
+                document.getElementById('progressText').textContent = completed + ' / ' + totalDevices;
+                
+                // Update live counters
+                document.getElementById('liveSuccess').textContent = success;
+                document.getElementById('liveFailed').textContent = failed;
+                document.getElementById('liveChanged').textContent = changed;
+                document.getElementById('liveActive').textContent = activeDevices.length;
+                
+                // Update summary card counters
+                document.getElementById('successCount').textContent = success;
+                document.getElementById('failedCount').textContent = failed;
+                document.getElementById('changedCount').textContent = changed;
+                
+                // Update active devices
+                const activeContainer = document.getElementById('activeDevices');
+                if (activeDevices.length > 0) {
+                    activeContainer.innerHTML = activeDevices.map(d => 
+                        `<span class="badge bg-primary-subtle text-primary border">
+                            <span class="spinner-border spinner-border-sm me-1" style="width: 0.6rem; height: 0.6rem;"></span>
+                            ${d.name}
+                        </span>`
+                    ).join('');
+                } else {
+                    activeContainer.innerHTML = '<span class="text-muted small">None currently</span>';
+                }
+                
+                // Update recent activity
+                const activityContainer = document.getElementById('recentActivity');
+                if (recentCompleted.length > 0) {
+                    activityContainer.innerHTML = recentCompleted.map(d => {
+                        const icon = d.success ? 
+                            '<i class="bi bi-check-circle-fill text-success me-1"></i>' : 
+                            '<i class="bi bi-x-circle-fill text-danger me-1"></i>';
+                        const changed = d.has_changed ? 
+                            '<span class="badge bg-warning text-dark ms-1">changed</span>' : '';
+                        const duration = d.duration ? ` (${formatDuration(d.duration)})` : '';
+                        const error = d.error ? `<span class="text-danger ms-2">${d.error}</span>` : '';
+                        return `<div class="border-bottom py-1">${icon}${d.name}${duration}${changed}${error}</div>`;
+                    }).join('');
+                }
+                
+                // Check if job completed
+                if (data.status !== 'running') {
+                    stopPolling();
+                    handleJobCompleted(data.status);
+                }
+            })
+            .catch(err => {
+                console.error('Progress fetch error:', err);
+            });
+    }
+    
+    function handleJobCompleted(status) {
+        // Update status badge
+        const statusBadge = document.getElementById('statusBadge');
+        if (status === 'completed') {
+            statusBadge.innerHTML = '<span class="badge bg-success">Completed</span>';
+        } else if (status === 'failed') {
+            statusBadge.innerHTML = '<span class="badge bg-danger">Failed</span>';
+        } else if (status === 'partial') {
+            statusBadge.innerHTML = '<span class="badge bg-warning">Partial</span>';
+        }
+        
+        // Update progress card
+        const progressCard = document.getElementById('progressCard');
+        if (progressCard) {
+            progressCard.querySelector('.card-header').classList.remove('bg-primary');
+            progressCard.querySelector('.card-header').classList.add(
+                status === 'completed' ? 'bg-success' : 
+                status === 'failed' ? 'bg-danger' : 'bg-warning'
+            );
+            progressCard.querySelector('.card-title').innerHTML = 
+                '<i class="bi bi-check-circle me-2"></i>Job ' + 
+                (status.charAt(0).toUpperCase() + status.slice(1));
+        }
+        
+        // Reload page after 2 seconds to get final data
+        setTimeout(() => {
+            window.location.reload();
+        }, 2000);
+    }
+    
+    function startPolling() {
+        updateProgress(); // Initial update
+        pollInterval = setInterval(updateProgress, 2000); // Poll every 2 seconds
+    }
+    
+    function stopPolling() {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+    }
+    
+    // Start polling when page loads
+    document.addEventListener('DOMContentLoaded', startPolling);
+    
+    // Stop polling when page is hidden/closed
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopPolling();
+        } else {
+            startPolling();
+        }
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

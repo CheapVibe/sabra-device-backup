@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Retention History - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Retention Execution History</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'backups:retention_settings' %}">Retention Policy</a></li>
+                <li class="breadcrumb-item active">History</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'backups:retention_settings' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Settings
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Started</th>
+                        <th>Duration</th>
+                        <th>Trigger</th>
+                        <th>Triggered By</th>
+                        <th>Analyzed</th>
+                        <th>Soft Deleted</th>
+                        <th>Perm Deleted</th>
+                        <th>Storage Freed</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exec in executions %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'backups:retention_execution_detail' exec.pk %}">
+                                {{ exec.started_at|date:"d M Y H:i" }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if exec.duration_seconds %}
+                            {{ exec.duration_seconds|floatformat:1 }}s
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if exec.trigger_type == 'manual' %}
+                            <span class="badge bg-info">Manual</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Scheduled</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if exec.triggered_by %}
+                            {{ exec.triggered_by.username }}
+                            {% else %}
+                            <span class="text-muted">System</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ exec.snapshots_analyzed }}</td>
+                        <td>
+                            {% if exec.snapshots_soft_deleted > 0 %}
+                            <span class="text-warning">{{ exec.snapshots_soft_deleted }}</span>
+                            {% else %}
+                            {{ exec.snapshots_soft_deleted }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if exec.snapshots_permanently_deleted > 0 %}
+                            <span class="text-danger">{{ exec.snapshots_permanently_deleted }}</span>
+                            {% else %}
+                            {{ exec.snapshots_permanently_deleted }}
+                            {% endif %}
+                        </td>
+                        <td>{{ exec.storage_freed_display }}</td>
+                        <td>
+                            {% if exec.status == 'completed' %}
+                            <span class="badge bg-success">Completed</span>
+                            {% elif exec.status == 'running' %}
+                            <span class="badge bg-warning">Running</span>
+                            {% elif exec.status == 'partial' %}
+                            <span class="badge bg-warning">Partial</span>
+                            {% else %}
+                            <span class="badge bg-danger">Failed</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">
+                            <i class="bi bi-clock-history" style="font-size: 2rem;"></i>
+                            <p class="mb-0 mt-2">No retention executions yet.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if is_paginated %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+        </li>
+        {% endif %}
+        
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

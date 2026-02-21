@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Export Configurations - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Export Configurations</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'backups:snapshot_list' %}">Snapshots</a></li>
+            <li class="breadcrumb-item active">Export</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Export Device Configurations</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Devices</label>
+                            <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                                {% for device in form.devices %}
+                                <div class="form-check">
+                                    {{ device.tag }}
+                                    <label class="form-check-label" for="{{ device.id_for_label }}">
+                                        {{ device.choice_label }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Device Groups</label>
+                            <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                                {% for group in form.device_groups %}
+                                <div class="form-check">
+                                    {{ group.tag }}
+                                    <label class="form-check-label" for="{{ group.id_for_label }}">
+                                        {{ group.choice_label }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.export_format.id_for_label }}" class="form-label">Export Format</label>
+                            {{ form.export_format }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.snapshot_choice.id_for_label }}" class="form-label">Snapshots</label>
+                            {{ form.snapshot_choice }}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3" id="date-range-fields" style="display: none;">
+                        <div class="col-md-6">
+                            <label for="{{ form.date_from.id_for_label }}" class="form-label">From Date</label>
+                            {{ form.date_from }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.date_to.id_for_label }}" class="form-label">To Date</label>
+                            {{ form.date_to }}
+                        </div>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        {{ form.include_metadata }}
+                        <label class="form-check-label" for="{{ form.include_metadata.id_for_label }}">
+                            Include metadata (timestamps, vendor info, hashes)
+                        </label>
+                    </div>
+                    
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        {{ form.errors }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-download"></i> Export
+                        </button>
+                        <a href="{% url 'backups:snapshot_list' %}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Export Options</h5>
+            </div>
+            <div class="card-body">
+                <h6>ZIP Archive</h6>
+                <p class="text-muted small">
+                    Creates a ZIP file with one folder per device, containing configuration files.
+                    Best for archiving or sharing.
+                </p>
+                
+                <h6>TAR.GZ Archive</h6>
+                <p class="text-muted small">
+                    Creates a compressed TAR archive. Preferred for Unix/Linux systems.
+                </p>
+                
+                <h6>JSON</h6>
+                <p class="text-muted small">
+                    Exports configurations with full metadata in JSON format.
+                    Can be re-imported into Sabra.
+                </p>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Other Exports</h5>
+            </div>
+            <div class="card-body">
+                <a href="{% url 'backups:export_inventory' %}" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="bi bi-database-down"></i> Export Inventory
+                </a>
+                <p class="text-muted small mt-2">
+                    Export device inventory (devices, groups, jobs) for backup or migration.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const snapshotChoice = document.querySelector('[name="snapshot_choice"]');
+    const dateFields = document.getElementById('date-range-fields');
+    
+    function toggleDateFields() {
+        if (snapshotChoice.value === 'all') {
+            dateFields.style.display = 'flex';
+        } else {
+            dateFields.style.display = 'none';
+        }
+    }
+    
+    if (snapshotChoice) {
+        snapshotChoice.addEventListener('change', toggleDateFields);
+        toggleDateFields();
+    }
+});
+</script>
+{% endblock %}

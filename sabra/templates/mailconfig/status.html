@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Email Status - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Email Status</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'mailconfig:config_list' %}">Mail Config</a></li>
+            <li class="breadcrumb-item active">Status</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-envelope-check me-2"></i>Email Configuration Status
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if status.configured %}
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle me-2"></i>
+                    Email is configured and ready to send.
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Email is not configured. Notifications will not be sent.
+                </div>
+                {% endif %}
+                
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">
+                        {% if status.configured %}
+                        <span class="badge bg-success">Configured</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Not Configured</span>
+                        {% endif %}
+                    </dd>
+                    
+                    {% if status.backend %}
+                    <dt class="col-sm-4">Backend</dt>
+                    <dd class="col-sm-8"><code>{{ status.backend }}</code></dd>
+                    {% endif %}
+                    
+                    {% if status.host %}
+                    <dt class="col-sm-4">SMTP Host</dt>
+                    <dd class="col-sm-8"><code>{{ status.host }}</code></dd>
+                    {% endif %}
+                    
+                    {% if status.port %}
+                    <dt class="col-sm-4">Port</dt>
+                    <dd class="col-sm-8">{{ status.port }}</dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        {% if active_config %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-gear me-2"></i>Active Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Name</dt>
+                    <dd class="col-sm-8">
+                        <a href="{% url 'mailconfig:config_detail' active_config.pk %}">{{ active_config.name }}</a>
+                    </dd>
+                    
+                    <dt class="col-sm-4">Host</dt>
+                    <dd class="col-sm-8"><code>{{ active_config.host }}</code></dd>
+                    
+                    <dt class="col-sm-4">Port</dt>
+                    <dd class="col-sm-8">{{ active_config.port }}</dd>
+                    
+                    <dt class="col-sm-4">Security</dt>
+                    <dd class="col-sm-8">
+                        {% if active_config.use_ssl %}
+                        <span class="badge bg-success">SSL</span>
+                        {% elif active_config.use_tls %}
+                        <span class="badge bg-info">TLS</span>
+                        {% else %}
+                        <span class="badge bg-secondary">None</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-4">From</dt>
+                    <dd class="col-sm-8">{{ active_config.from_name }} &lt;{{ active_config.from_email }}&gt;</dd>
+                    
+                    <dt class="col-sm-4">Last Test</dt>
+                    <dd class="col-sm-8">
+                        {% if active_config.last_tested_at %}
+                        {{ active_config.last_tested_at|sabra_datetime_short }}
+                        {% if active_config.last_test_success %}
+                        <span class="badge bg-success ms-1">Passed</span>
+                        {% else %}
+                        <span class="badge bg-danger ms-1">Failed</span>
+                        {% endif %}
+                        {% else %}
+                        <span class="text-muted">Not tested</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+                
+                <div class="mt-4">
+                    <a href="{% url 'mailconfig:send_test' active_config.pk %}" class="btn btn-outline-primary">
+                        <i class="bi bi-send me-1"></i> Send Test Email
+                    </a>
+                    <a href="{% url 'mailconfig:config_edit' active_config.pk %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-pencil me-1"></i> Edit
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-envelope-x text-muted" style="font-size: 3rem;"></i>
+                <h5 class="mt-3">No Active Configuration</h5>
+                <p class="text-muted">Configure an email server to enable notifications.</p>
+                <a href="{% url 'mailconfig:config_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-1"></i> Configure Email
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

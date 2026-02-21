@@ -1,0 +1,42 @@
+{% extends 'base_auth.html' %}
+
+{% block title %}Sign Out - Sabra Device Backup{% endblock %}
+
+{% block auth_content %}
+<div class="text-center">
+    <div class="brand-logo" style="background: #6c757d;">
+        <i class="bi bi-box-arrow-right"></i>
+    </div>
+    <h1 class="auth-title h3">Sign Out</h1>
+    <p class="auth-subtitle">Are you sure you want to sign out?</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <p class="text-muted text-center mb-4">
+            You are currently signed in as <strong>{{ request.user.username }}</strong>
+        </p>
+        
+        <form method="post" action="{% url 'accounts:logout' %}">
+            {% csrf_token %}
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-box-arrow-right me-2"></i>
+                    Yes, Sign Out
+                </button>
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="text-center mt-4">
+    <small class="text-muted">
+        <i class="bi bi-shield-lock me-1"></i>
+        Your session will be securely terminated
+    </small>
+</div>
+{% endblock %}

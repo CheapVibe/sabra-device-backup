@@ -1,0 +1,521 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Reports & Analytics - Sabra Device Backup{% endblock %}
+
+{% block extra_css %}
+<style>
+    .kpi-card {
+        border: none;
+        border-radius: 12px;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+    .kpi-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .kpi-trend {
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    .kpi-trend.positive { color: #198754; }
+    .kpi-trend.negative { color: #dc3545; }
+    .kpi-trend.neutral { color: #6c757d; }
+    .health-bar {
+        height: 8px;
+        border-radius: 4px;
+        background: #e9ecef;
+        overflow: hidden;
+    }
+    .health-bar-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.5s ease;
+    }
+    .activity-item {
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+    .activity-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+    }
+    .period-selector .btn {
+        border-radius: 20px;
+        padding: 6px 16px;
+        font-size: 0.875rem;
+    }
+    .period-selector .btn.active {
+        background: #0d6efd;
+        color: white;
+    }
+    .chart-container {
+        position: relative;
+        height: 280px;
+    }
+    .device-health-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        background: #f8f9fa;
+    }
+    .report-type-card {
+        border: 2px solid transparent;
+        transition: all 0.2s;
+    }
+    .report-type-card:hover {
+        border-color: #0d6efd;
+        background: #f8f9ff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap">
+    <div>
+        <h1 class="mb-1">Reports & Analytics</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Reports</li>
+            </ol>
+        </nav>
+    </div>
+    <div class="period-selector btn-group mt-2 mt-md-0">
+        {% for days, label in period_options %}
+        <a href="?period={{ days }}" class="btn btn-outline-secondary {% if period == days %}active{% endif %}">{{ label }}</a>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card kpi-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="text-muted mb-1 small text-uppercase fw-semibold">Total Backups</p>
+                        <p class="kpi-value text-dark mb-0">{{ kpis.total_backups|default:0|intcomma }}</p>
+                    </div>
+                    <div class="bg-primary bg-opacity-10 text-primary rounded p-2">
+                        <i class="bi bi-database fs-4"></i>
+                    </div>
+                </div>
+                <p class="kpi-trend mb-0 mt-2 {% if kpis.total_trend > 0 %}positive{% elif kpis.total_trend < 0 %}negative{% else %}neutral{% endif %}">
+                    <i class="bi bi-arrow-{% if kpis.total_trend > 0 %}up{% elif kpis.total_trend < 0 %}down{% else %}right{% endif %}"></i>
+                    {{ kpis.total_trend|default:0 }}% vs previous period
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card kpi-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="text-muted mb-1 small text-uppercase fw-semibold">Success Rate</p>
+                        <p class="kpi-value text-success mb-0">{{ kpis.success_rate|default:0 }}%</p>
+                    </div>
+                    <div class="bg-success bg-opacity-10 text-success rounded p-2">
+                        <i class="bi bi-check-circle fs-4"></i>
+                    </div>
+                </div>
+                <p class="kpi-trend mb-0 mt-2 {% if kpis.success_trend > 0 %}positive{% elif kpis.success_trend < 0 %}negative{% else %}neutral{% endif %}">
+                    <i class="bi bi-arrow-{% if kpis.success_trend > 0 %}up{% elif kpis.success_trend < 0 %}down{% else %}right{% endif %}"></i>
+                    {% if kpis.success_trend > 0 %}+{% endif %}{{ kpis.success_trend|default:0 }}% change
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card kpi-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="text-muted mb-1 small text-uppercase fw-semibold">Failed Backups</p>
+                        <p class="kpi-value text-danger mb-0">{{ kpis.failed|default:0|intcomma }}</p>
+                    </div>
+                    <div class="bg-danger bg-opacity-10 text-danger rounded p-2">
+                        <i class="bi bi-exclamation-triangle fs-4"></i>
+                    </div>
+                </div>
+                <p class="kpi-trend mb-0 mt-2 {% if kpis.failed_trend > 0 %}negative{% elif kpis.failed_trend < 0 %}positive{% else %}neutral{% endif %}">
+                    <i class="bi bi-arrow-{% if kpis.failed_trend > 0 %}up{% elif kpis.failed_trend < 0 %}down{% else %}right{% endif %}"></i>
+                    {{ kpis.failed_trend|default:0 }}% vs previous period
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card kpi-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="text-muted mb-1 small text-uppercase fw-semibold">Config Changes</p>
+                        <p class="kpi-value text-warning mb-0">{{ kpis.changes|default:0|intcomma }}</p>
+                    </div>
+                    <div class="bg-warning bg-opacity-10 text-warning rounded p-2">
+                        <i class="bi bi-pencil-square fs-4"></i>
+                    </div>
+                </div>
+                <p class="kpi-trend mb-0 mt-2 neutral">
+                    <i class="bi bi-info-circle"></i>
+                    Configurations modified
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Main Content -->
+    <div class="col-lg-8">
+        <!-- Backup Trend Chart -->
+        <div class="card mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                <h5 class="card-title mb-0"><i class="bi bi-graph-up me-2"></i>Backup Activity Trend</h5>
+                <div class="d-flex gap-3">
+                    <span class="d-flex align-items-center small"><span class="activity-dot bg-success"></span>Success</span>
+                    <span class="d-flex align-items-center small"><span class="activity-dot bg-danger"></span>Failed</span>
+                    <span class="d-flex align-items-center small"><span class="activity-dot bg-warning"></span>Changes</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="backupTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Report Types Grid -->
+        <div class="card mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0"><i class="bi bi-file-earmark-text me-2"></i>Generate Reports</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <a href="{% url 'reports:backup_summary' %}" class="card report-type-card h-100 text-decoration-none">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-primary text-white rounded-circle p-3 me-3">
+                                        <i class="bi bi-clipboard-data fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1 text-dark">Backup Summary</h6>
+                                        <small class="text-muted">Overview of all backup jobs and success rates</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{% url 'reports:change_report' %}" class="card report-type-card h-100 text-decoration-none">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-warning text-white rounded-circle p-3 me-3">
+                                        <i class="bi bi-file-diff fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1 text-dark">Change Report</h6>
+                                        <small class="text-muted">Configuration changes detected</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{% url 'reports:failure_report' %}" class="card report-type-card h-100 text-decoration-none">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-danger text-white rounded-circle p-3 me-3">
+                                        <i class="bi bi-exclamation-triangle fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1 text-dark">Failure Report</h6>
+                                        <small class="text-muted">Analyze backup failures and errors</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{% url 'reports:device_status' %}" class="card report-type-card h-100 text-decoration-none">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-info text-white rounded-circle p-3 me-3">
+                                        <i class="bi bi-hdd-rack fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1 text-dark">Device Status</h6>
+                                        <small class="text-muted">Current health of all managed devices</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Two Column Activity -->
+        <div class="row g-4">
+            <!-- Recent Changes -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                        <h6 class="card-title mb-0"><i class="bi bi-pencil-square text-warning me-2"></i>Recent Changes</h6>
+                        <a href="{% url 'reports:change_report' %}" class="btn btn-sm btn-link">View All</a>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            {% for change in recent_changes %}
+                            <div class="list-group-item border-0">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="fw-medium">{{ change.device.hostname }}</span>
+                                        <small class="text-muted d-block">{{ change.device.ip_address }}</small>
+                                    </div>
+                                    <small class="text-muted">{{ change.created_at|timesince }} ago</small>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="list-group-item text-center text-muted py-4 border-0">
+                                <i class="bi bi-check-circle fs-3 d-block mb-2"></i>
+                                No recent changes
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Failures -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                        <h6 class="card-title mb-0"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Recent Failures</h6>
+                        <a href="{% url 'reports:failure_report' %}" class="btn btn-sm btn-link">View All</a>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            {% for failure in recent_failures %}
+                            <div class="list-group-item border-0">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="fw-medium text-danger">{{ failure.device.hostname }}</span>
+                                        <small class="text-muted d-block">{{ failure.device.ip_address }}</small>
+                                    </div>
+                                    <small class="text-muted">{{ failure.created_at|timesince }} ago</small>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="list-group-item text-center text-muted py-4 border-0">
+                                <i class="bi bi-check-circle text-success fs-3 d-block mb-2"></i>
+                                No recent failures
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Device Health Overview -->
+        <div class="card mb-4">
+            <div class="card-header bg-white py-3">
+                <h6 class="card-title mb-0"><i class="bi bi-heart-pulse me-2"></i>Device Health</h6>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <div class="display-4 fw-bold {% if device_stats.health_percent >= 90 %}text-success{% elif device_stats.health_percent >= 70 %}text-warning{% else %}text-danger{% endif %}">
+                        {{ device_stats.health_percent|default:0 }}%
+                    </div>
+                    <p class="text-muted mb-0">Overall Health Score</p>
+                </div>
+                <div class="health-bar mb-3">
+                    <div class="health-bar-fill {% if device_stats.health_percent >= 90 %}bg-success{% elif device_stats.health_percent >= 70 %}bg-warning{% else %}bg-danger{% endif %}" 
+                         style="width: {{ device_stats.health_percent|default:0 }}%"></div>
+                </div>
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="fw-bold text-success">{{ device_stats.healthy|default:0 }}</div>
+                        <small class="text-muted">Healthy</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="fw-bold text-danger">{{ device_stats.failed|default:0 }}</div>
+                        <small class="text-muted">Failed</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="fw-bold text-secondary">{{ device_stats.never_backed_up|default:0 }}</div>
+                        <small class="text-muted">Pending</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-0">
+                <a href="{% url 'inventory:device_list' %}" class="btn btn-outline-primary btn-sm w-100">View All Devices</a>
+            </div>
+        </div>
+
+        <!-- Top Failing Devices -->
+        {% if top_failures %}
+        <div class="card mb-4">
+            <div class="card-header bg-white py-3">
+                <h6 class="card-title mb-0 text-danger"><i class="bi bi-bug me-2"></i>Top Failing Devices</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for device in top_failures %}
+                    <a href="{% url 'inventory:device_detail' device.pk %}" class="list-group-item list-group-item-action border-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-medium">{{ device.hostname }}</span>
+                                <small class="text-muted d-block">{{ device.ip_address }}</small>
+                            </div>
+                            <span class="badge bg-danger">{{ device.failure_count }} failures</span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Scheduled Reports -->
+        <div class="card mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                <h6 class="card-title mb-0"><i class="bi bi-calendar-check me-2"></i>Scheduled Reports</h6>
+                <a href="{% url 'reports:scheduled_list' %}" class="btn btn-sm btn-link">Manage</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for report in scheduled_reports %}
+                    <div class="list-group-item border-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-medium">{{ report.name }}</span>
+                                <small class="text-muted d-block text-capitalize">{{ report.get_frequency_display }}</small>
+                            </div>
+                            <span class="badge bg-success">Active</span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="list-group-item text-center text-muted py-4 border-0">
+                        <i class="bi bi-calendar-plus fs-3 d-block mb-2"></i>
+                        No scheduled reports
+                        <a href="{% url 'reports:scheduled_create' %}" class="d-block mt-2 btn btn-sm btn-primary">Create Schedule</a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Export -->
+        <div class="card">
+            <div class="card-header bg-white py-3">
+                <h6 class="card-title mb-0"><i class="bi bi-download me-2"></i>Quick Export</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'inventory:device_list' %}?export=csv" class="btn btn-outline-secondary">
+                        <i class="bi bi-filetype-csv me-2"></i>Export Devices CSV
+                    </a>
+                    <a href="{% url 'reports:backup_summary' %}?export=csv" class="btn btn-outline-secondary">
+                        <i class="bi bi-filetype-csv me-2"></i>Export Backups CSV
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('backupTrendChart').getContext('2d');
+    
+    const chartData = {
+        labels: {{ chart_data.labels|safe }},
+        datasets: [
+            {
+                label: 'Successful',
+                data: {{ chart_data.success|safe }},
+                borderColor: '#198754',
+                backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 2
+            },
+            {
+                label: 'Failed',
+                data: {{ chart_data.failed|safe }},
+                borderColor: '#dc3545',
+                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 2
+            },
+            {
+                label: 'Changes',
+                data: {{ chart_data.changes|safe }},
+                borderColor: '#ffc107',
+                backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 2
+            }
+        ]
+    };
+
+    new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: '#f0f0f0'
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
