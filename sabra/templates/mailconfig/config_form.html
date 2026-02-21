@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object %}Edit{% else %}Add{% endif %} Mail Config - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if object %}Edit Mail Configuration{% else %}Add Mail Configuration{% endif %}</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'mailconfig:config_list' %}">Mail Configuration</a></li>
+            <li class="breadcrumb-item active">{% if object %}{{ object.name }}{% else %}Add{% endif %}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {% crispy form %}
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-shield-lock me-2"></i>Security
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    All fields are encrypted at rest using Fernet encryption with a unique key.
+                </p>
+                <p class="text-muted small mb-0">
+                    Credentials are only decrypted in memory when sending emails.
+                </p>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Common Settings</h5>
+            </div>
+            <div class="card-body">
+                <h6>Gmail</h6>
+                <ul class="text-muted small">
+                    <li>Host: <code>smtp.gmail.com</code></li>
+                    <li>Port: <code>587</code> (TLS)</li>
+                    <li>Requires App Password</li>
+                </ul>
+                
+                <h6>Microsoft 365</h6>
+                <ul class="text-muted small">
+                    <li>Host: <code>smtp.office365.com</code></li>
+                    <li>Port: <code>587</code> (TLS)</li>
+                </ul>
+                
+                <h6>Amazon SES</h6>
+                <ul class="text-muted small mb-0">
+                    <li>Host: <code>email-smtp.{region}.amazonaws.com</code></li>
+                    <li>Port: <code>587</code> (TLS)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+
+{% block title %}Retention Preview - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Retention Preview</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'backups:retention_settings' %}">Retention Policy</a></li>
+                <li class="breadcrumb-item active">Preview</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'backups:retention_settings' %}" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
+        <form action="{% url 'backups:retention_run' %}" method="post" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-warning" onclick="return confirm('Run retention policy now? This will delete the snapshots shown below.');">
+                <i class="bi bi-play-fill me-1"></i> Run Now
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Current Settings -->
+<div class="alert alert-info mb-4">
+    <i class="bi bi-info-circle me-2"></i>
+    <strong>Current Policy:</strong> 
+    Delete snapshots older than <strong>{{ settings.retention_days }} days</strong>,
+    keep minimum <strong>{{ settings.keep_minimum }}</strong> per device
+    {% if settings.keep_changed %}, always keep changed configs{% endif %}.
+    Grace period: <strong>{{ settings.soft_delete_grace_days }} days</strong>.
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <div class="text-muted small">To Soft Delete</div>
+                <div class="h2 mb-0 text-warning">{{ summary.soft_delete_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-danger">
+            <div class="card-body text-center">
+                <div class="text-muted small">To Permanently Delete</div>
+                <div class="h2 mb-0 text-danger">{{ summary.permanent_delete_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="text-muted small">Storage to Free</div>
+                <div class="h2 mb-0 text-success">{{ summary.storage_to_free }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="text-muted small">Devices Affected</div>
+                <div class="h2 mb-0">{{ summary.devices_affected }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Protected Stats -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <div class="text-muted small">Protected (Kept)</div>
+                <div class="h4 mb-0">{{ summary.protected_kept }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <div class="text-muted small">Changed (Kept)</div>
+                <div class="h4 mb-0">{{ summary.changed_kept }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <div class="text-muted small">Minimum (Kept)</div>
+                <div class="h4 mb-0">{{ summary.minimum_kept }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <!-- Snapshots to Soft Delete -->
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-archive me-2"></i>Snapshots to Soft Delete ({{ summary.soft_delete_count }})
+                </h5>
+            </div>
+            {% if snapshots_to_delete %}
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="sticky-top bg-white">
+                            <tr>
+                                <th>Device</th>
+                                <th>Date</th>
+                                <th>Size</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for snapshot in snapshots_to_delete %}
+                            <tr>
+                                <td>{{ snapshot.device.name }}</td>
+                                <td>{{ snapshot.created_at|date:"d M Y H:i" }}</td>
+                                <td>{{ snapshot.config_size|filesizeformat }}</td>
+                                <td>
+                                    <form action="{% url 'backups:snapshot_protect' snapshot.pk %}" method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.path }}">
+                                        <input type="hidden" name="reason" value="Protected from preview">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary" title="Protect">
+                                            <i class="bi bi-shield"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% if snapshots_to_delete|length >= 100 %}
+            <div class="card-footer text-muted small">
+                Showing first 100 snapshots.
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="card-body text-center text-muted py-4">
+                <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                <p class="mb-0 mt-2">No snapshots to soft delete.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <!-- Snapshots to Permanently Delete -->
+        <div class="card mb-4">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-trash3 me-2"></i>Snapshots to Permanently Delete ({{ summary.permanent_delete_count }})
+                </h5>
+            </div>
+            {% if snapshots_to_permanently_delete %}
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="sticky-top bg-white">
+                            <tr>
+                                <th>Device</th>
+                                <th>Deleted At</th>
+                                <th>Size</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for snapshot in snapshots_to_permanently_delete %}
+                            <tr>
+                                <td>{{ snapshot.device.name }}</td>
+                                <td>{{ snapshot.deleted_at|date:"d M Y H:i" }}</td>
+                                <td>{{ snapshot.config_size|filesizeformat }}</td>
+                                <td>
+                                    <form action="{% url 'backups:snapshot_restore' snapshot.pk %}" method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Restore">
+                                            <i class="bi bi-arrow-counterclockwise"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% if snapshots_to_permanently_delete|length >= 100 %}
+            <div class="card-footer text-muted small">
+                Showing first 100 snapshots.
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="card-body text-center text-muted py-4">
+                <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                <p class="mb-0 mt-2">No snapshots to permanently delete.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if device_breakdown %}
+<!-- Device Breakdown -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-diagram-3 me-2"></i>Device Breakdown
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th>Total</th>
+                        <th>Candidates</th>
+                        <th>To Delete</th>
+                        <th>Protected</th>
+                        <th>Changed</th>
+                        <th>Minimum</th>
+                        <th>Storage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for device_name, stats in device_breakdown.items %}
+                    <tr>
+                        <td><strong>{{ device_name }}</strong></td>
+                        <td>{{ stats.total_snapshots }}</td>
+                        <td>{{ stats.candidates }}</td>
+                        <td>
+                            {% if stats.to_delete > 0 %}
+                            <span class="text-warning">{{ stats.to_delete }}</span>
+                            {% else %}
+                            {{ stats.to_delete }}
+                            {% endif %}
+                        </td>
+                        <td>{{ stats.protected_kept }}</td>
+                        <td>{{ stats.changed_kept }}</td>
+                        <td>{{ stats.minimum_kept }}</td>
+                        <td>{{ stats.storage_to_free|filesizeformat }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

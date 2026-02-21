@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Import Inventory - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Import Inventory</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'inventory:device_list' %}">Inventory</a></li>
+            <li class="breadcrumb-item active">Import</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Import Device Inventory</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.import_file.id_for_label }}" class="form-label">Import File</label>
+                        {{ form.import_file }}
+                        <div class="form-text">
+                            {{ form.import_file.help_text }}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            {{ form.skip_existing }}
+                            <label class="form-check-label" for="{{ form.skip_existing.id_for_label }}">
+                                Skip existing devices (don't update)
+                            </label>
+                            <div class="form-text">
+                                {{ form.skip_existing.help_text }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Important:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Credential profiles import usernames only - passwords must be set manually</li>
+                            <li>Review your import file before uploading</li>
+                            <li>Consider creating a backup before importing</li>
+                        </ul>
+                    </div>
+                    
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        {{ form.errors }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-upload"></i> Import Inventory
+                        </button>
+                        <a href="{% url 'inventory:device_list' %}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Import Format</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    Import JSON files exported from Sabra Device Backup.
+                    The file should have been created using the Export Inventory feature.
+                </p>
+                
+                <h6>What Gets Imported</h6>
+                <ul class="text-muted small">
+                    <li>Devices (name, hostname, IP, vendor, type, etc.)</li>
+                    <li>Device Groups (if included in export)</li>
+                    <li>Backup Jobs (if included in export)</li>
+                    <li>Tags</li>
+                </ul>
+                
+                <h6>What Doesn't Import</h6>
+                <ul class="text-muted small">
+                    <li>Passwords (security reasons)</li>
+                    <li>SSH private keys</li>
+                    <li>Configuration snapshots (use Config Import)</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">After Import</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    After importing devices, you'll need to:
+                </p>
+                <ol class="text-muted small">
+                    <li>Create or update credential profiles with passwords</li>
+                    <li>Assign credential profiles to devices</li>
+                    <li>Test connectivity to devices</li>
+                    <li>Enable backup jobs</li>
+                </ol>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Configuration Import</h5>
+            </div>
+            <div class="card-body">
+                <a href="{% url 'backups:import_config' %}" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="bi bi-file-earmark-code"></i> Import Configurations
+                </a>
+                <p class="text-muted small mt-2">
+                    Import device configuration backups from files.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

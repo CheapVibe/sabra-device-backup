@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block title %}Review Import - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Review Import</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'backups:snapshot_list' %}">Snapshots</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'backups:import_config' %}">Import</a></li>
+            <li class="breadcrumb-item active">Review</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Import Summary</h5>
+        <div>
+            <span class="badge bg-primary">{{ total_count }} configurations</span>
+            <span class="badge bg-success">{{ matched_count }} matched to devices</span>
+            <span class="badge bg-warning text-dark">{{ total_count|add:"-matched_count" }} unmatched</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <p>
+            <strong>Action:</strong> 
+            {% if import_action == 'snapshot' %}
+            <span class="badge bg-info">Create Snapshots</span>
+            - New configuration snapshots will be created for matched devices.
+            {% else %}
+            <span class="badge bg-secondary">Compare Only</span>
+            - Review differences without making changes.
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Configurations to Import</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Source</th>
+                            <th>Matched Device</th>
+                            <th>Config Preview</th>
+                            {% if import_action == 'snapshot' %}
+                            <th>Target Device</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for config in configs %}
+                        <tr>
+                            <td>
+                                <strong>{{ config.device_name }}</strong>
+                                {% if config.hostname %}
+                                <br><small class="text-muted">{{ config.hostname }}</small>
+                                {% endif %}
+                                {% if config.filename %}
+                                <br><small class="text-muted">{{ config.filename }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if config.matched_device %}
+                                <span class="text-success">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    {{ config.matched_device.name }}
+                                </span>
+                                <br>
+                                <small class="text-muted">{{ config.matched_device.hostname }}</small>
+                                {% else %}
+                                <span class="text-warning">
+                                    <i class="bi bi-question-circle"></i>
+                                    No match found
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <pre class="mb-0 small bg-light p-2 rounded" style="max-height: 100px; overflow: auto; font-size: 11px;">{{ config.content_preview }}</pre>
+                            </td>
+                            {% if import_action == 'snapshot' %}
+                            <td>
+                                <select name="device_{{ forloop.counter0 }}" class="form-select form-select-sm">
+                                    <option value="">-- Skip --</option>
+                                    {% load inventory_tags %}
+                                    {% get_all_devices as devices %}
+                                    {% for device in devices %}
+                                    <option value="{{ device.pk }}" 
+                                            {% if config.matched_device.pk == device.pk %}selected{% endif %}>
+                                        {{ device.name }} ({{ device.hostname }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">
+                                No configurations found in the uploaded file.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="d-flex gap-2 mt-4">
+        {% if import_action == 'snapshot' %}
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg"></i> Create Snapshots
+        </button>
+        {% else %}
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg"></i> Complete Review
+        </button>
+        {% endif %}
+        <a href="{% url 'backups:import_config' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+        <a href="{% url 'backups:snapshot_list' %}" class="btn btn-outline-secondary">
+            Cancel
+        </a>
+    </div>
+</form>
+{% endblock %}

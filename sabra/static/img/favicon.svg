@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Style 2: Circular Sync Arrows - Teal/Emerald -->
+  <defs>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#14b8a6"/>
+      <stop offset="100%" style="stop-color:#10b981"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="28" fill="url(#grad2)"/>
+  
+  <!-- Sync arrows (circular) -->
+  <path d="M32 14 A18 18 0 0 1 50 32" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M50 32 L46 26 L54 28 Z" fill="white"/>
+  
+  <path d="M32 50 A18 18 0 0 1 14 32" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M14 32 L18 38 L10 36 Z" fill="white"/>
+  
+  <!-- Center HDD icon -->
+  <rect x="24" y="26" width="16" height="12" rx="2" fill="white"/>
+  <circle cx="36" cy="32" r="2" fill="#14b8a6"/>
+</svg>

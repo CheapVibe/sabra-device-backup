@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Run Command - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Run Command</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'activities:session_list' %}">CLI Sessions</a></li>
+            <li class="breadcrumb-item active">Run Command</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-terminal me-2"></i>Execute CLI Commands
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {{ form.non_field_errors }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-4">
+                        <label for="id_name" class="form-label">Session Name (Optional)</label>
+                        {{ form.name }}
+                        <small class="text-muted">{{ form.name.help_text }}</small>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <label for="id_command" class="form-label">Command</label>
+                            {{ form.command }}
+                            <small class="text-muted">{{ form.command.help_text }}</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="id_template" class="form-label">Or Use Template</label>
+                            {{ form.template }}
+                            <small class="text-muted">{{ form.template.help_text }}</small>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    <h6 class="mb-3">Target Devices</h6>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Select Devices</label>
+                            <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                                {% for device in form.devices %}
+                                <div class="form-check">
+                                    {{ device.tag }}
+                                    <label class="form-check-label" for="{{ device.id_for_label }}">
+                                        {{ device.choice_label }}
+                                    </label>
+                                </div>
+                                {% empty %}
+                                <p class="text-muted mb-0">No active devices</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Or Select Groups</label>
+                            <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                                {% for group in form.device_groups %}
+                                <div class="form-check">
+                                    {{ group.tag }}
+                                    <label class="form-check-label" for="{{ group.id_for_label }}">
+                                        {{ group.choice_label }}
+                                    </label>
+                                </div>
+                                {% empty %}
+                                <p class="text-muted mb-0">No groups defined</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="{% url 'activities:session_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-play-fill me-1"></i> Run Command
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-2"></i>About CLI Sessions
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    CLI sessions allow you to run <strong>read-only</strong> commands across multiple 
+                    devices simultaneously. Commands are executed via SSH/Telnet using stored credentials.
+                </p>
+                <div class="alert alert-warning small mb-0">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    <strong>Read-only:</strong> This system is designed for information gathering only. 
+                    Configuration changes should be made through proper change management processes.
+                </div>
+            </div>
+        </div>
+        
+        {% if form.template.field.queryset.exists %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-journal-code me-2"></i>Command Templates
+                </h5>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for template in form.template.field.queryset %}
+                <div class="list-group-item">
+                    <strong>{{ template.name }}</strong>
+                    <br>
+                    <code class="small text-muted">{{ template.command|truncatechars:50 }}</code>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const templateSelect = document.getElementById('id_template');
+    const commandTextarea = document.getElementById('id_command');
+    
+    if (templateSelect && commandTextarea) {
+        templateSelect.addEventListener('change', function() {
+            // When template selected, we could auto-fill command if desired
+            // For now, just keep both options available
+        });
+    }
+});
+</script>
+{% endblock %}

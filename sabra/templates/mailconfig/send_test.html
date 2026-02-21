@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Send Test Email - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Send Test Email</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'mailconfig:settings' %}">Email Settings</a></li>
+            <li class="breadcrumb-item active">Send Test</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        {% if status.configured %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Using configuration: <strong>{{ status.config_name }}</strong>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {% crispy form %}
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            No active email configuration. 
+            <a href="{% url 'mailconfig:config_create' %}">Configure email first</a>.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

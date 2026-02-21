@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+
+{% block title %}Compare Command Outputs - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Compare Command Outputs</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'activities:session_list' %}">CLI Sessions</a></li>
+                <li class="breadcrumb-item active">Compare Outputs</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Select Device -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-hdd-network me-2"></i>Select Device
+                </h5>
+            </div>
+            <div class="card-body">
+                <select class="form-select" id="deviceSelect">
+                    <option value="">-- Select a device --</option>
+                    {% for device in devices %}
+                    <option value="{{ device.pk }}">{{ device.name }} ({{ device.ip_address }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Select Outputs to Compare -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-terminal me-2"></i>Output A (Older)
+                </h5>
+            </div>
+            <div class="card-body">
+                <select class="form-select result-select" id="result1Select" disabled>
+                    <option value="">-- Select a device first --</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-terminal me-2"></i>Output B (Newer)
+                </h5>
+            </div>
+            <div class="card-body">
+                <select class="form-select result-select" id="result2Select" disabled>
+                    <option value="">-- Select a device first --</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Compare Button -->
+    <div class="col-12 text-center">
+        <button type="button" class="btn btn-primary btn-lg" id="compareBtn" disabled>
+            <i class="bi bi-file-diff me-2"></i>Compare Outputs
+        </button>
+    </div>
+    
+    <!-- Recent Command Results Table -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clock-history me-2"></i>Recent Command Results
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Device</th>
+                                <th>Session</th>
+                                <th>Executed</th>
+                                <th>Status</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in recent_results %}
+                            <tr>
+                                <td>
+                                    <span class="fw-medium">{{ result.device.name }}</span>
+                                    <br>
+                                    <small class="text-muted">{{ result.device.ip_address }}</small>
+                                </td>
+                                <td>
+                                    <a href="{% url 'activities:session_detail' result.session.pk %}">
+                                        Session #{{ result.session.pk }}
+                                    </a>
+                                </td>
+                                <td>{{ result.executed_at|sabra_datetime_short }}</td>
+                                <td>
+                                    {% if result.success %}
+                                    <span class="badge bg-success">Success</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Failed</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'activities:result_detail' result.pk %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    No command results found.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deviceSelect = document.getElementById('deviceSelect');
+    const result1Select = document.getElementById('result1Select');
+    const result2Select = document.getElementById('result2Select');
+    const compareBtn = document.getElementById('compareBtn');
+    
+    // Device selection handler
+    deviceSelect.addEventListener('change', function() {
+        const deviceId = this.value;
+        
+        if (!deviceId) {
+            result1Select.innerHTML = '<option value="">-- Select a device first --</option>';
+            result2Select.innerHTML = '<option value="">-- Select a device first --</option>';
+            result1Select.disabled = true;
+            result2Select.disabled = true;
+            compareBtn.disabled = true;
+            return;
+        }
+        
+        // Fetch results for selected device
+        fetch(`{% url 'activities:session_list' %}?device=${deviceId}&format=json`)
+            .then(response => response.json())
+            .then(data => {
+                populateResultSelects(data.results || []);
+            })
+            .catch(error => {
+                // Fallback: use results from page data
+                const options = Array.from(document.querySelectorAll('table tbody tr'))
+                    .filter(row => row.querySelector('td:first-child .fw-medium')?.textContent === 
+                        deviceSelect.options[deviceSelect.selectedIndex].text.split(' (')[0])
+                    .map(row => ({
+                        pk: row.querySelector('a[href*="result"]')?.href.split('/').slice(-2)[0],
+                        session_pk: row.querySelector('a[href*="session"]')?.textContent.replace('Session #', ''),
+                        executed_at: row.querySelector('td:nth-child(3)')?.textContent
+                    }));
+                populateResultSelectsFallback();
+            });
+    });
+    
+    function populateResultSelectsFallback() {
+        // Simple fallback using existing table data
+        result1Select.innerHTML = '<option value="">-- Select output A --</option>';
+        result2Select.innerHTML = '<option value="">-- Select output B --</option>';
+        
+        {% for result in recent_results %}
+        const deviceName{{ forloop.counter }} = "{{ result.device.name }}";
+        const selectedDevice = deviceSelect.options[deviceSelect.selectedIndex].text.split(' (')[0];
+        if (deviceName{{ forloop.counter }} === selectedDevice) {
+            const opt1 = document.createElement('option');
+            opt1.value = "{{ result.pk }}";
+            opt1.textContent = "Session #{{ result.session.pk }} - {{ result.executed_at|sabra_datetime_short }}";
+            result1Select.appendChild(opt1);
+            
+            const opt2 = opt1.cloneNode(true);
+            result2Select.appendChild(opt2);
+        }
+        {% endfor %}
+        
+        result1Select.disabled = false;
+        result2Select.disabled = false;
+    }
+    
+    function populateResultSelects(results) {
+        result1Select.innerHTML = '<option value="">-- Select output A --</option>';
+        result2Select.innerHTML = '<option value="">-- Select output B --</option>';
+        
+        results.forEach(result => {
+            const opt1 = document.createElement('option');
+            opt1.value = result.pk;
+            opt1.textContent = `Session #${result.session_pk} - ${result.executed_at}`;
+            result1Select.appendChild(opt1);
+            
+            const opt2 = opt1.cloneNode(true);
+            result2Select.appendChild(opt2);
+        });
+        
+        result1Select.disabled = false;
+        result2Select.disabled = false;
+    }
+    
+    // Update compare button state
+    [result1Select, result2Select].forEach(select => {
+        select.addEventListener('change', function() {
+            const r1 = result1Select.value;
+            const r2 = result2Select.value;
+            compareBtn.disabled = !r1 || !r2 || r1 === r2;
+        });
+    });
+    
+    // Compare button click
+    compareBtn.addEventListener('click', function() {
+        const r1 = result1Select.value;
+        const r2 = result2Select.value;
+        
+        if (r1 && r2 && r1 !== r2) {
+            window.location.href = `{% url 'activities:session_list' %}`.replace('session/', '') + `result/diff/${r1}/${r2}/`;
+        }
+    });
+});
+</script>
+{% endblock %}

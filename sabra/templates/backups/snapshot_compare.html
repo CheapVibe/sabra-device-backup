@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block title %}Compare Snapshots - Sabra Device Backup{% endblock %}
+
+{% block extra_css %}
+<style>
+    .diff-wrapper {
+        font-family: 'SFMono-Regular', Consolas, monospace;
+        font-size: 0.8rem;
+        overflow-x: auto;
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+    }
+    .diff-wrapper table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+    .diff-wrapper td, .diff-wrapper th {
+        padding: 2px 10px;
+        white-space: pre-wrap;
+        word-break: break-all;
+        vertical-align: top;
+    }
+    .diff-wrapper .diff_add {
+        background-color: #d4edda;
+    }
+    .diff-wrapper .diff_sub {
+        background-color: #f8d7da;
+    }
+    .diff-wrapper .diff_chg {
+        background-color: #fff3cd;
+    }
+    .diff-wrapper .diff_header {
+        background-color: #e9ecef;
+        font-weight: bold;
+    }
+    .diff-wrapper .diff_next {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Compare Configurations</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'backups:snapshot_list' %}">Snapshots</a></li>
+                <li class="breadcrumb-item active">Compare</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'backups:snapshot_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Snapshots
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Info Cards -->
+    <div class="col-md-6">
+        <div class="card border-danger h-100">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="bi bi-file-code me-2"></i>Snapshot A (Older)</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Device</dt>
+                    <dd class="col-sm-8">{{ snapshot1.device.name }}</dd>
+                    
+                    <dt class="col-sm-4">Timestamp</dt>
+                    <dd class="col-sm-8">{{ snapshot1.created_at|sabra_datetime }}</dd>
+                    
+                    <dt class="col-sm-4">Size</dt>
+                    <dd class="col-sm-8">{{ snapshot1.config_size|filesizeformat }}</dd>
+                    
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">
+                        {% if snapshot1.status == 'success' %}
+                        <span class="badge bg-success">Success</span>
+                        {% else %}
+                        <span class="badge bg-danger">Failed</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card border-success h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-file-code me-2"></i>Snapshot B (Newer)</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Device</dt>
+                    <dd class="col-sm-8">{{ snapshot2.device.name }}</dd>
+                    
+                    <dt class="col-sm-4">Timestamp</dt>
+                    <dd class="col-sm-8">{{ snapshot2.created_at|sabra_datetime }}</dd>
+                    
+                    <dt class="col-sm-4">Size</dt>
+                    <dd class="col-sm-8">{{ snapshot2.config_size|filesizeformat }}</dd>
+                    
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">
+                        {% if snapshot2.status == 'success' %}
+                        <span class="badge bg-success">Success</span>
+                        {% else %}
+                        <span class="badge bg-danger">Failed</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Diff Output -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-file-diff me-2"></i>Configuration Difference
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="diff-wrapper">
+                    {{ diff_table|safe }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Email Settings - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-envelope-gear me-2"></i>Email Settings</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item active">Email Settings</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">SMTP Server Configuration</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {% crispy form %}
+                </form>
+            </div>
+        </div>
+        
+        {% if status.configured %}
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Test Email</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Send a test email to verify your configuration.</p>
+                <a href="{% url 'mailconfig:send_test' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-send me-1"></i> Send Test Email
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Status Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-activity me-2"></i>Status
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if status.configured %}
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-success me-2">Configured</span>
+                    <span class="text-muted small">SMTP server set up</span>
+                </div>
+                {% if object.last_test_success %}
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-success me-2">Tested</span>
+                    <span class="text-muted small">{{ object.last_tested_at|timesince }} ago</span>
+                </div>
+                {% elif object.last_tested_at %}
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-danger me-2">Test Failed</span>
+                    <span class="text-muted small">{{ object.last_tested_at|timesince }} ago</span>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-warning me-2">Not Configured</span>
+                    <span class="text-muted small">Complete the form to enable email</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Security Card -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-shield-lock me-2"></i>Security
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    All fields are encrypted at rest using Fernet encryption with a unique key.
+                </p>
+                <p class="text-muted small mb-0">
+                    Credentials are only decrypted in memory when sending emails.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Provider Help Card -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Common Settings</h5>
+            </div>
+            <div class="card-body">
+                <h6>Gmail</h6>
+                <ul class="text-muted small">
+                    <li>Host: <code>smtp.gmail.com</code></li>
+                    <li>Port: <code>587</code> (TLS)</li>
+                    <li>Requires App Password</li>
+                </ul>
+                
+                <h6>Microsoft 365</h6>
+                <ul class="text-muted small">
+                    <li>Host: <code>smtp.office365.com</code></li>
+                    <li>Port: <code>587</code> (TLS)</li>
+                </ul>
+                
+                <h6>Amazon SES</h6>
+                <ul class="text-muted small mb-0">
+                    <li>Host: <code>email-smtp.region.amazonaws.com</code></li>
+                    <li>Port: <code>587</code> (TLS)</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Notification Info -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-2"></i>Email Recipients
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-0">
+                    Email recipients are configured per backup job in the job settings.
+                    Each job can have its own list of email recipients.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block title %}Mail Configuration - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Mail Server Configuration</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Mail Configuration</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'mailconfig:config_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Add Configuration
+        </a>
+    </div>
+</div>
+
+<!-- Status Alert -->
+{% if status.configured %}
+<div class="alert alert-success">
+    <i class="bi bi-check-circle me-2"></i>
+    <strong>Email is configured.</strong> Using "{{ status.config_name }}" configuration.
+    {% if status.last_tested %}
+    <br>
+    <small>Last tested: {{ status.last_tested|timesince }} ago 
+    {% if status.last_test_success %}
+    <span class="badge bg-success">Passed</span>
+    {% else %}
+    <span class="badge bg-danger">Failed</span>
+    {% endif %}
+    </small>
+    {% endif %}
+</div>
+{% else %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    <strong>Email not configured.</strong> Notification emails will be logged to console.
+</div>
+{% endif %}
+
+<div class="alert alert-info">
+    <i class="bi bi-shield-lock me-2"></i>
+    All email credentials are encrypted at rest using Fernet encryption. No plaintext passwords are stored.
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Server</th>
+                        <th>Port</th>
+                        <th>Security</th>
+                        <th>Status</th>
+                        <th>Test</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for config in configs %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'mailconfig:config_detail' config.pk %}">
+                                <strong>{{ config.name }}</strong>
+                            </a>
+                            {% if config.is_active %}
+                            <span class="badge bg-success ms-1">Active</span>
+                            {% endif %}
+                        </td>
+                        <td><code>{{ config.host }}</code></td>
+                        <td>{{ config.port }}</td>
+                        <td>
+                            {% if config.use_tls %}
+                            <span class="badge bg-primary">TLS</span>
+                            {% elif config.use_ssl %}
+                            <span class="badge bg-info">SSL</span>
+                            {% else %}
+                            <span class="badge bg-secondary">None</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if config.is_active %}
+                            <span class="badge bg-success">Active</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if config.last_test_success is None %}
+                            <span class="text-muted">Not tested</span>
+                            {% elif config.last_test_success %}
+                            <span class="text-success"><i class="bi bi-check-circle"></i> OK</span>
+                            {% else %}
+                            <span class="text-danger" title="{{ config.last_test_error }}">
+                                <i class="bi bi-x-circle"></i> Failed
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="action-buttons">
+                            <form action="{% url 'mailconfig:config_test' config.pk %}" method="post" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-success" title="Test Connection">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </button>
+                            </form>
+                            {% if not config.is_active %}
+                            <form action="{% url 'mailconfig:config_activate' config.pk %}" method="post" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-primary" title="Activate">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                            <a href="{% url 'mailconfig:config_edit' config.pk %}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'mailconfig:config_delete' config.pk %}" class="btn btn-sm btn-outline-danger" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <i class="bi bi-envelope-at"></i>
+                                <h5>No mail configurations</h5>
+                                <p class="text-muted">Configure an SMTP server to enable email notifications.</p>
+                                <a href="{% url 'mailconfig:config_create' %}" class="btn btn-primary">
+                                    <i class="bi bi-plus-lg me-1"></i> Add Configuration
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if configs %}
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Send Test Email</h5>
+    </div>
+    <div class="card-body">
+        <a href="{% url 'mailconfig:send_test' %}" class="btn btn-outline-primary">
+            <i class="bi bi-send me-1"></i> Send Test Email
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

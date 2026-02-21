@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+
+{% block title %}App Export - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-download me-2"></i>App Export</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active">App Export</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'app_import' %}" class="btn btn-outline-primary">
+            <i class="bi bi-upload me-1"></i> Import Data
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Export All Section -->
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0"><i class="bi bi-file-earmark-zip me-2"></i>Export All Data</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    Download a complete export of your Sabra configuration including all devices, credentials, 
+                    groups, vendors, and backup jobs in a single ZIP file.
+                </p>
+                <div class="alert alert-info small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <strong>Note:</strong> Credential passwords are NOT exported for security reasons. 
+                    After importing, you'll need to update passwords manually.
+                </div>
+                <a href="{% url 'app_export_download' 'all' %}" class="btn btn-primary btn-lg">
+                    <i class="bi bi-download me-2"></i>Download Complete Export (ZIP)
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Individual Exports -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-table me-2"></i>Export Individual Tables</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">Download individual data tables as CSV files for review or selective import.</p>
+                
+                <div class="row g-3">
+                    <!-- Devices -->
+                    <div class="col-md-4 col-lg-3">
+                        <div class="card h-100 border-0 bg-light">
+                            <div class="card-body text-center">
+                                <i class="bi bi-hdd-network fs-1 text-primary mb-2"></i>
+                                <h6 class="card-title">Devices</h6>
+                                <p class="card-text small text-muted">{{ counts.devices }} records</p>
+                                <a href="{% url 'app_export_download' 'devices' %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-download me-1"></i>Export CSV
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Credentials -->
+                    <div class="col-md-4 col-lg-3">
+                        <div class="card h-100 border-0 bg-light">
+                            <div class="card-body text-center">
+                                <i class="bi bi-key fs-1 text-warning mb-2"></i>
+                                <h6 class="card-title">Credentials</h6>
+                                <p class="card-text small text-muted">{{ counts.credentials }} records</p>
+                                <a href="{% url 'app_export_download' 'credentials' %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-download me-1"></i>Export CSV
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Groups -->
+                    <div class="col-md-4 col-lg-3">
+                        <div class="card h-100 border-0 bg-light">
+                            <div class="card-body text-center">
+                                <i class="bi bi-collection fs-1 text-success mb-2"></i>
+                                <h6 class="card-title">Device Groups</h6>
+                                <p class="card-text small text-muted">{{ counts.groups }} records</p>
+                                <a href="{% url 'app_export_download' 'groups' %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-download me-1"></i>Export CSV
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Vendors -->
+                    <div class="col-md-4 col-lg-3">
+                        <div class="card h-100 border-0 bg-light">
+                            <div class="card-body text-center">
+                                <i class="bi bi-building fs-1 text-secondary mb-2"></i>
+                                <h6 class="card-title">Vendors</h6>
+                                <p class="card-text small text-muted">{{ counts.vendors }} records</p>
+                                <a href="{% url 'app_export_download' 'vendors' %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-download me-1"></i>Export CSV
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Backup Jobs -->
+                    <div class="col-md-4 col-lg-3">
+                        <div class="card h-100 border-0 bg-light">
+                            <div class="card-body text-center">
+                                <i class="bi bi-clock-history fs-1 text-primary mb-2"></i>
+                                <h6 class="card-title">Backup Jobs</h6>
+                                <p class="card-text small text-muted">{{ counts.jobs }} records</p>
+                                <a href="{% url 'app_export_download' 'jobs' %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-download me-1"></i>Export CSV
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- CSV Format Info -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="bi bi-question-circle me-2"></i>CSV Format Reference</h5>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="csvFormatAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#formatDevices">
+                                <i class="bi bi-hdd-network me-2"></i>Devices CSV Format
+                            </button>
+                        </h2>
+                        <div id="formatDevices" class="accordion-collapse collapse" data-bs-parent="#csvFormatAccordion">
+                            <div class="accordion-body">
+                                <code class="d-block bg-light p-2 rounded small">
+                                    name, hostname, ip_address, vendor, platform, protocol, port, credential_profile, location, description, is_active, group
+                                </code>
+                                <p class="mt-2 mb-0 small text-muted">
+                                    <strong>Notes:</strong> Credential profile and group must exist before import.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#formatVendors">
+                                <i class="bi bi-building me-2"></i>Vendors CSV Format
+                            </button>
+                        </h2>
+                        <div id="formatVendors" class="accordion-collapse collapse" data-bs-parent="#csvFormatAccordion">
+                            <div class="accordion-body">
+                                <code class="d-block bg-light p-2 rounded small">
+                                    name, display_name, description, pre_backup_commands, backup_command, post_backup_commands, is_active
+                                </code>
+                                <p class="mt-2 mb-0 small text-muted">
+                                    <strong>Notes:</strong> Name must be a valid Netmiko device type. Use newlines (\n) in command fields for multiple commands.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

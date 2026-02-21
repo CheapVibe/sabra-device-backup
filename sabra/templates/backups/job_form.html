@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object %}Edit{% else %}Create{% endif %} Backup Job - Sabra Device Backup{% endblock %}
+
+{% block extra_css %}
+<style>
+    .schedule-option {
+        display: none;
+    }
+    .schedule-option.active {
+        display: block;
+    }
+    #schedule-builder {
+        border: 1px solid #dee2e6;
+    }
+    [data-bs-theme="dark"] #schedule-builder {
+        background: #2b3035 !important;
+        border-color: #495057;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if object %}Edit Backup Job{% else %}Create Backup Job{% endif %}</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'backups:job_list' %}">Backup Jobs</a></li>
+            <li class="breadcrumb-item active">{% if object %}{{ object.name }}{% else %}Create{% endif %}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" id="job-form">
+                    {% csrf_token %}
+                    {% crispy form %}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ====================
+    // Select All Groups
+    // ====================
+    const selectAllCheckbox = document.getElementById('selectAllGroups');
+    if (selectAllCheckbox) {
+        const groupCheckboxes = document.querySelectorAll('input[name="device_groups"]');
+        
+        selectAllCheckbox.addEventListener('change', function() {
+            groupCheckboxes.forEach(function(checkbox) {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+        });
+        
+        groupCheckboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                const allChecked = Array.from(groupCheckboxes).every(cb => cb.checked);
+                const someChecked = Array.from(groupCheckboxes).some(cb => cb.checked);
+                selectAllCheckbox.checked = allChecked;
+                selectAllCheckbox.indeterminate = someChecked && !allChecked;
+            });
+        });
+        
+        const allChecked = Array.from(groupCheckboxes).every(cb => cb.checked);
+        const someChecked = Array.from(groupCheckboxes).some(cb => cb.checked);
+        selectAllCheckbox.checked = allChecked;
+        selectAllCheckbox.indeterminate = someChecked && !allChecked;
+    }
+    
+    // ====================
+    // Schedule Builder
+    // ====================
+    const scheduleType = document.getElementById('schedule-type');
+    const scheduleHour = document.getElementById('schedule-hour');
+    const scheduleMinute = document.getElementById('schedule-minute');
+    const hourlyInterval = document.getElementById('hourly-interval');
+    const scheduleCron = document.getElementById('schedule-cron');
+    const customCronInput = document.getElementById('custom-cron-input');
+    const schedulePreviewText = document.getElementById('schedule-preview-text');
+    
+    // Schedule option containers
+    const dailySchedule = document.getElementById('daily-schedule');
+    const hourlySchedule = document.getElementById('hourly-schedule');
+    const customSchedule = document.getElementById('custom-schedule');
+    
+    function showScheduleOption(type) {
+        // Hide all options
+        [dailySchedule, hourlySchedule, customSchedule].forEach(el => {
+            if (el) el.style.display = 'none';
+        });
+        
+        // Show selected option
+        switch (type) {
+            case 'daily':
+                if (dailySchedule) dailySchedule.style.display = 'block';
+                break;
+            case 'hourly':
+                if (hourlySchedule) hourlySchedule.style.display = 'block';
+                break;
+            case 'custom':
+                if (customSchedule) customSchedule.style.display = 'block';
+                break;
+        }
+    }
+    
+    function updateCronExpression() {
+        const type = scheduleType ? scheduleType.value : 'daily';
+        const hour = scheduleHour ? parseInt(scheduleHour.value) : 2;
+        const minute = scheduleMinute ? parseInt(scheduleMinute.value) : 0;
+        const interval = hourlyInterval ? parseInt(hourlyInterval.value) : 4;
+        
+        let cron = '';
+        let preview = '';
+        
+        switch (type) {
+            case 'daily':
+                cron = `${minute} ${hour} * * *`;
+                preview = `Daily at ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+                break;
+            case 'hourly':
+                cron = `0 */${interval} * * *`;
+                preview = `Every ${interval} hour${interval > 1 ? 's' : ''}`;
+                break;
+            case 'custom':
+                cron = customCronInput ? customCronInput.value : '0 2 * * *';
+                preview = `Custom: ${cron}`;
+                break;
+        }
+        
+        if (scheduleCron) scheduleCron.value = cron;
+        if (schedulePreviewText) schedulePreviewText.textContent = preview;
+    }
+    
+    // Event listeners
+    if (scheduleType) {
+        scheduleType.addEventListener('change', function() {
+            showScheduleOption(this.value);
+            updateCronExpression();
+        });
+    }
+    
+    [scheduleHour, scheduleMinute, hourlyInterval].forEach(el => {
+        if (el) el.addEventListener('change', updateCronExpression);
+    });
+    
+    if (customCronInput) {
+        customCronInput.addEventListener('input', updateCronExpression);
+        
+        // Set initial value for custom cron input from existing cron
+        if (scheduleCron && scheduleCron.value && scheduleType && scheduleType.value === 'custom') {
+            customCronInput.value = scheduleCron.value;
+        }
+    }
+    
+    // Initialize
+    showScheduleOption(scheduleType ? scheduleType.value : 'daily');
+    updateCronExpression();
+});
+</script>
+{% endblock %}

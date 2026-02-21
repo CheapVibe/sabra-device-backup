@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block title %}Config - {{ snapshot.device.name }} - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>{{ snapshot.device.name }} Configuration</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'backups:snapshot_list' %}">Snapshots</a></li>
+                <li class="breadcrumb-item active">{{ snapshot.device.name }}</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        {% if snapshot.has_changed %}
+        <a href="{% url 'backups:snapshot_diff' snapshot.pk %}" class="btn btn-warning">
+            <i class="bi bi-file-diff me-1"></i> View Diff
+        </a>
+        {% endif %}
+        <a href="{% url 'backups:snapshot_download' snapshot.pk %}" class="btn btn-primary">
+            <i class="bi bi-download me-1"></i> Download
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Snapshot Details</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Device</dt>
+                    <dd class="col-sm-7">
+                        <a href="{% url 'inventory:device_detail' snapshot.device.pk %}">{{ snapshot.device.name }}</a>
+                    </dd>
+                    
+                    <dt class="col-sm-5">Vendor</dt>
+                    <dd class="col-sm-7">{{ snapshot.device.get_vendor_display }}</dd>
+                    
+                    <dt class="col-sm-5">Timestamp</dt>
+                    <dd class="col-sm-7">{{ snapshot.created_at|sabra_datetime }}</dd>
+                    
+                    <dt class="col-sm-5">Status</dt>
+                    <dd class="col-sm-7">
+                        {% if snapshot.status == 'success' %}
+                        <span class="badge bg-success">Success</span>
+                        {% else %}
+                        <span class="badge bg-danger">Failed</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-5">Size</dt>
+                    <dd class="col-sm-7">{{ snapshot.config_size|filesizeformat }}</dd>
+                    
+                    <dt class="col-sm-5">Changed</dt>
+                    <dd class="col-sm-7">
+                        {% if snapshot.has_changed %}
+                        <span class="badge bg-warning text-dark">Yes</span>
+                        {% else %}
+                        <span class="text-muted">No</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-5">Hash</dt>
+                    <dd class="col-sm-7"><code class="small">{{ snapshot.config_hash|truncatechars:16 }}</code></dd>
+                </dl>
+            </div>
+        </div>
+        
+        <!-- Previous Snapshots -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">History</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for s in history %}
+                    <a href="{% url 'backups:snapshot_view' s.pk %}" 
+                       class="list-group-item list-group-item-action {% if s.pk == snapshot.pk %}active{% endif %}">
+                        <div class="d-flex justify-content-between">
+                            <small>{{ s.created_at|sabra_compact }}</small>
+                            {% if s.has_changed %}
+                            <span class="badge bg-warning text-dark">Changed</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-9">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Configuration</h5>
+                <button class="btn btn-sm btn-outline-secondary" onclick="copyConfig()">
+                    <i class="bi bi-clipboard me-1"></i> Copy
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="config-view" id="config-content">{{ snapshot.config_content }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyConfig() {
+    const content = document.getElementById('config-content').innerText;
+    navigator.clipboard.writeText(content).then(function() {
+        alert('Configuration copied to clipboard!');
+    });
+}
+</script>
+{% endblock %}

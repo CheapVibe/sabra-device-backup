@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ vendor.display_name }} - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>{{ vendor.display_name }}</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:vendor_list' %}">Vendors</a></li>
+                <li class="breadcrumb-item active">{{ vendor.display_name }}</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'inventory:vendor_edit' vendor.pk %}" class="btn btn-primary">
+            <i class="bi bi-pencil me-1"></i> Edit
+        </a>
+        {% if device_count == 0 %}
+        <a href="{% url 'inventory:vendor_delete' vendor.pk %}" class="btn btn-danger">
+            <i class="bi bi-trash me-1"></i> Delete
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Vendor Details</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Display Name</dt>
+                    <dd class="col-sm-7">{{ vendor.display_name }}</dd>
+                    
+                    <dt class="col-sm-5">Netmiko Type</dt>
+                    <dd class="col-sm-7"><code>{{ vendor.name }}</code></dd>
+                    
+                    <dt class="col-sm-5">Status</dt>
+                    <dd class="col-sm-7">
+                        {% if vendor.is_active %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-5">Devices</dt>
+                    <dd class="col-sm-7">
+                        <span class="badge bg-primary">{{ device_count }}</span>
+                    </dd>
+                    
+                    <dt class="col-sm-5">Created</dt>
+                    <dd class="col-sm-7">{{ vendor.created_at|sabra_datetime_short }}</dd>
+                    
+                    <dt class="col-sm-5">Updated</dt>
+                    <dd class="col-sm-7">{{ vendor.updated_at|sabra_datetime_short }}</dd>
+                </dl>
+                
+                {% if vendor.description %}
+                <hr>
+                <p class="text-muted mb-0">{{ vendor.description }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Devices Using This Vendor</h5>
+                {% if device_count > 0 %}
+                <a href="{% url 'inventory:device_list' %}?vendor={{ vendor.name }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-filter me-1"></i> View All
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Device Name</th>
+                                <th>Hostname</th>
+                                <th>Platform</th>
+                                <th class="text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for device in devices %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'inventory:device_detail' device.pk %}">{{ device.name }}</a>
+                                </td>
+                                <td>{{ device.hostname }}</td>
+                                <td>{{ device.platform|default:"-" }}</td>
+                                <td class="text-center">
+                                    {% if device.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">
+                                    No devices using this vendor
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if device_count > 20 %}
+                <div class="card-footer text-center">
+                    <a href="{% url 'inventory:device_list' %}?vendor={{ vendor.name }}" class="text-decoration-none">
+                        View all {{ device_count }} devices <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
