@@ -114,8 +114,8 @@
             },
             dropdownItem: function(tagData) {
                 return `<div class="tagify__dropdown__item" tagifySuggestionIdx="${tagData.tagifySuggestionIdx}">
-                    <span class="badge me-2" style="background-color: ${tagData.color || '#6B7280'};">&nbsp;</span>
-                    ${tagData.value}
+                    <span class="badge me-2" style="background-color: ${tagData.color || '#6B7280'}; pointer-events: none;">&nbsp;</span>
+                    <span style="pointer-events: none;">${tagData.value}</span>
                 </div>`;
             }
         }

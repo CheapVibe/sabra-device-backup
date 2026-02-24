@@ -905,6 +905,13 @@ class AppImportProcessView(LoginRequiredMixin, AdminRequiredMixin, View):
                 except Exception as e:
                     errors.append(f"{hostname}: {str(e)}")
         
+        # Clean up orphaned tags after import
+        try:
+            from sabra.inventory.models import DeviceTag
+            DeviceTag.objects.annotate(device_count=Count('devices')).filter(device_count=0).delete()
+        except Exception:
+            pass  # Gracefully ignore if tags table doesn't exist
+        
         return {'created': created, 'updated': updated, 'skipped': skipped, 'errors': errors}
     
     def _apply_tags_to_device(self, device, tag_names):

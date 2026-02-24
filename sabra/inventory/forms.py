@@ -1,5 +1,6 @@
 from django import forms
 from django.db import connection
+from django.db.models import Count
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Fieldset, HTML, Div
 from .models import Device, CredentialProfile, DeviceGroup, Vendor, DeviceTag
@@ -158,6 +159,9 @@ class DeviceForm(forms.ModelForm):
                             defaults={'name': tag_name}
                         )
                         instance.tags.add(tag)
+            
+            # Clean up orphaned tags (tags not associated with any device)
+            DeviceTag.objects.annotate(device_count=Count('devices')).filter(device_count=0).delete()
             
             self._save_m2m()
         

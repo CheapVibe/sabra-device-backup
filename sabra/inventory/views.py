@@ -1,3 +1,5 @@
+import json
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, View
@@ -107,10 +109,10 @@ class DeviceListView(LoginRequiredMixin, ListView):
         tags_enabled = is_tags_table_available()
         context['tags_enabled'] = tags_enabled
         if tags_enabled:
-            context['all_tags'] = list(DeviceTag.objects.values('name', 'color').order_by('name'))
+            context['all_tags'] = json.dumps(list(DeviceTag.objects.values('name', 'color').order_by('name')))
             context['current_tags'] = self.request.GET.get('tags', '')
         else:
-            context['all_tags'] = []
+            context['all_tags'] = '[]'
             context['current_tags'] = ''
         return context
 
@@ -193,7 +195,11 @@ class DeviceDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
     def delete(self, request, *args, **kwargs):
         device = self.get_object()
         messages.success(request, f'Device "{device.name}" deleted successfully.')
-        return super().delete(request, *args, **kwargs)
+        response = super().delete(request, *args, **kwargs)
+        # Clean up orphaned tags after device deletion
+        if is_tags_table_available():
+            DeviceTag.objects.annotate(device_count=Count('devices')).filter(device_count=0).delete()
+        return response
 
 
 class DeviceCopyView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
