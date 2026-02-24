@@ -416,7 +416,7 @@ class AppExportView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
                 'id': 'devices',
                 'name': 'Devices',
                 'description': 'Import network devices (credential_profile and group are required)',
-                'columns': 'name, hostname, vendor, platform, protocol, port, credential_profile, group, location, description, is_active',
+                'columns': 'name, hostname, vendor, platform, protocol, port, credential_profile, group, tags, description, is_active',
                 'icon': 'bi-hdd-network',
             },
             {
@@ -861,10 +861,13 @@ class AppImportProcessView(LoginRequiredMixin, AdminRequiredMixin, View):
                 'platform': row.get('platform', ''),
                 'protocol': row.get('protocol', 'ssh'),
                 'port': port,
-                'location': row.get('location', ''),
                 'description': row.get('description', ''),
                 'is_active': self._parse_bool(row.get('is_active', True)),
             }
+            
+            # Parse tags from CSV (comma-separated tag names)
+            tags_str = row.get('tags', '').strip()
+            tag_names = [t.strip() for t in tags_str.split(',') if t.strip()] if tags_str else []
             
             # Only include FKs if resolved (for updates, keep existing if not specified)
             if credential:
@@ -880,6 +883,9 @@ class AppImportProcessView(LoginRequiredMixin, AdminRequiredMixin, View):
                     for field, value in device_data.items():
                         setattr(existing, field, value)
                     existing.save()
+                    # Update tags if specified
+                    if tag_names:
+                        self._apply_tags_to_device(existing, tag_names)
                     updated += 1
                 except Exception as e:
                     errors.append(f"{hostname}: Update failed - {str(e)}")
@@ -887,16 +893,35 @@ class AppImportProcessView(LoginRequiredMixin, AdminRequiredMixin, View):
                 try:
                     # For new devices, credential_profile and group are mandatory
                     # (already validated and included in device_data above)
-                    Device.objects.create(
+                    device = Device.objects.create(
                         hostname=hostname,
                         created_by=user,
                         **device_data
                     )
+                    # Apply tags to new device
+                    if tag_names:
+                        self._apply_tags_to_device(device, tag_names)
                     created += 1
                 except Exception as e:
                     errors.append(f"{hostname}: {str(e)}")
         
         return {'created': created, 'updated': updated, 'skipped': skipped, 'errors': errors}
+    
+    def _apply_tags_to_device(self, device, tag_names):
+        """Apply tags to a device, creating tags if they don't exist."""
+        from sabra.inventory.models import DeviceTag
+        
+        try:
+            device.tags.clear()
+            for tag_name in tag_names:
+                tag, _ = DeviceTag.objects.get_or_create(
+                    name__iexact=tag_name,
+                    defaults={'name': tag_name}
+                )
+                device.tags.add(tag)
+        except Exception:
+            # Gracefully ignore if tags table doesn't exist yet
+            pass
     
     def _import_jobs(self, rows, skip_existing, user):
         """Import backup jobs from CSV."""

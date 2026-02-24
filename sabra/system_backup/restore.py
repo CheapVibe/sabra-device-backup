@@ -14,6 +14,29 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _apply_tags_to_device(device, tag_names):
+    """
+    Apply tags to a device, creating tags if they don't exist.
+    Gracefully handles case where tags table doesn't exist yet.
+    """
+    from sabra.inventory.models import DeviceTag
+    
+    if not tag_names:
+        return
+    
+    try:
+        for tag_name in tag_names:
+            if tag_name:
+                tag, _ = DeviceTag.objects.get_or_create(
+                    name__iexact=tag_name.strip() if isinstance(tag_name, str) else tag_name,
+                    defaults={'name': tag_name.strip() if isinstance(tag_name, str) else tag_name}
+                )
+                device.tags.add(tag)
+    except Exception:
+        # Gracefully ignore if tags table doesn't exist yet
+        pass
+
+
 def restore_credential_profiles(items: List[Dict], user, conflict_mode: str = 'skip') -> Dict[str, Any]:
     """
     Restore credential profiles from backup data.
@@ -229,10 +252,12 @@ def restore_devices(items: List[Dict], user, conflict_mode: str = 'skip') -> Dic
                 'port': port,
                 'credential_profile': credential,
                 'group': group,
-                'location': item.get('location', ''),
                 'description': item.get('description', ''),
                 'is_active': item.get('is_active', True),
             }
+            
+            # Get tags from import data
+            tag_names = item.get('tags', [])
             
             if existing:
                 if conflict_mode == 'skip':
@@ -242,14 +267,18 @@ def restore_devices(items: List[Dict], user, conflict_mode: str = 'skip') -> Dic
                     for field, value in device_data.items():
                         setattr(existing, field, value)
                     existing.save()
+                    # Apply tags
+                    _apply_tags_to_device(existing, tag_names)
                     updated += 1
                     processed_items.append({'action': 'updated', 'name': device_name, 'note': ''})
             else:
-                Device.objects.create(
+                device = Device.objects.create(
                     hostname=hostname,
                     created_by=user,
                     **device_data
                 )
+                # Apply tags
+                _apply_tags_to_device(device, tag_names)
                 created += 1
                 processed_items.append({'action': 'created', 'name': device_name, 'note': ''})
         except Exception as e:

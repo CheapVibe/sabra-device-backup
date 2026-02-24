@@ -1054,28 +1054,48 @@ class ImportInventoryView(LoginRequiredMixin, AdminRequiredMixin, FormView):
                     skipped_count += 1
                     continue
                 else:
-                    # Update existing
-                    for field in ['name', 'ip_address', 'vendor', 'device_type', 'port', 
-                                  'connection_protocol', 'description', 'location', 'is_active']:
+                    # Update existing device with current model fields
+                    for field in ['name', 'vendor', 'platform', 'port', 
+                                  'protocol', 'description', 'is_active']:
                         if field in device_data:
                             setattr(existing, field, device_data[field])
                     existing.save()
+                    # Handle tags
+                    self._apply_tags_to_device(existing, device_data.get('tags', []))
                     updated_count += 1
             else:
-                # Create new
+                # Create new device with required fields
                 try:
+                    # Resolve credential profile
+                    cred_name = device_data.get('credential_profile', '')
+                    credential = CredentialProfile.objects.filter(name=cred_name).first() if cred_name else None
+                    
+                    # Resolve group
+                    group_name = device_data.get('group', '')
+                    group = groups_map.get(group_name) or DeviceGroup.objects.filter(name=group_name).first()
+                    
+                    if not credential:
+                        errors.append(f"{hostname}: Credential profile required")
+                        continue
+                    if not group:
+                        errors.append(f"{hostname}: Group required")
+                        continue
+                    
                     device = Device.objects.create(
                         name=device_data.get('name', hostname),
                         hostname=hostname,
-                        ip_address=device_data.get('ip_address', ''),
                         vendor=device_data.get('vendor', 'cisco_ios'),
-                        device_type=device_data.get('device_type', 'router'),
+                        platform=device_data.get('platform', ''),
                         port=device_data.get('port', 22),
-                        connection_protocol=device_data.get('connection_protocol', 'ssh'),
+                        protocol=device_data.get('protocol', 'ssh'),
                         description=device_data.get('description', ''),
-                        location=device_data.get('location', ''),
                         is_active=device_data.get('is_active', True),
+                        credential_profile=credential,
+                        group=group,
+                        created_by=self.request.user,
                     )
+                    # Handle tags
+                    self._apply_tags_to_device(device, device_data.get('tags', []))
                     
                     created_count += 1
                 except Exception as e:
@@ -1132,6 +1152,25 @@ class ImportInventoryView(LoginRequiredMixin, AdminRequiredMixin, FormView):
             messages.warning(self.request, f'Errors: {"; ".join(errors[:5])}')
         
         return redirect('inventory:device_list')
+    
+    def _apply_tags_to_device(self, device, tag_names):
+        """Apply tags to a device, creating tags if they don't exist."""
+        from sabra.inventory.models import DeviceTag
+        
+        if not tag_names:
+            return
+        
+        try:
+            for tag_name in tag_names:
+                if tag_name:
+                    tag, _ = DeviceTag.objects.get_or_create(
+                        name__iexact=tag_name.strip(),
+                        defaults={'name': tag_name.strip()}
+                    )
+                    device.tags.add(tag)
+        except Exception:
+            # Gracefully ignore if tags table doesn't exist yet
+            pass
 
 
 # ============== Additional Command Output Views ==============
