@@ -23,17 +23,19 @@
 <!-- Search -->
 <div class="card mb-4">
     <div class="card-body py-3">
-        <form method="get" class="row g-3 align-items-center">
+        <form method="get" class="row g-3 align-items-center" id="vendor-search-form">
             <div class="col-md-6">
                 <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-search"></i></span>
-                    <input type="text" class="form-control" name="q" value="{{ search_query }}" placeholder="Search by name, Netmiko type, or description...">
+                    <input type="text" class="form-control" name="q" id="vendor-search" value="{{ search_query }}" placeholder="Search by name, Netmiko type, or description...">
                 </div>
             </div>
             <div class="col-md-4">
-                <button type="submit" class="btn btn-outline-primary me-2">
-                    <i class="bi bi-search me-1"></i> Search
-                </button>
+                <noscript>
+                    <button type="submit" class="btn btn-outline-primary me-2">
+                        <i class="bi bi-search me-1"></i> Search
+                    </button>
+                </noscript>
                 {% if search_query %}
                 <a href="{% url 'inventory:vendor_list' %}" class="btn btn-outline-secondary">
                     <i class="bi bi-x-lg me-1"></i> Clear
@@ -129,4 +131,23 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const form = document.getElementById('vendor-search-form');
+    const searchInput = document.getElementById('vendor-search');
+    let debounceTimer;
+    
+    if (searchInput && form) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function() {
+                form.submit();
+            }, 400);
+        });
+    }
+})();
+</script>
 {% endblock %}

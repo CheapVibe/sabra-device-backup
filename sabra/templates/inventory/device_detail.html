@@ -99,6 +99,20 @@
             </div>
         </div>
         
+        <!-- Tags -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Tags</h5>
+            </div>
+            <div class="card-body">
+                {% for tag in device.tags.all %}
+                <span class="badge me-1 mb-1" style="background-color: {{ tag.color }}; color: #fff;">{{ tag.name }}</span>
+                {% empty %}
+                <span class="text-muted">No tags assigned</span>
+                {% endfor %}
+            </div>
+        </div>
+        
         <!-- Backup Status -->
         <div class="card mt-4">
             <div class="card-header">

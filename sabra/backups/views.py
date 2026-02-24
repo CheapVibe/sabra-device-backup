@@ -900,22 +900,24 @@ class ExportInventoryView(LoginRequiredMixin, AdminRequiredMixin, FormView):
             }
             
             # Export devices
-            for device in Device.objects.all():
+            for device in Device.objects.all().prefetch_related('tags'):
                 device_data = {
                     'name': device.name,
                     'hostname': device.hostname,
-                    'ip_address': device.ip_address,
                     'vendor': device.vendor,
-                    'device_type': device.device_type,
+                    'platform': device.platform or '',
                     'port': device.port,
-                    'connection_protocol': device.connection_protocol,
+                    'protocol': device.protocol,
                     'description': device.description,
-                    'location': device.location,
+                    'tags': [t.name for t in device.tags.all()],
                     'is_active': device.is_active,
                 }
                 
-                if include_credentials and device.credential:
-                    device_data['credential_profile'] = device.credential.name
+                if include_credentials and device.credential_profile:
+                    device_data['credential_profile'] = device.credential_profile.name
+                
+                if device.group:
+                    device_data['group'] = device.group.name
                 
                 export_data['devices'].append(device_data)
             
@@ -967,20 +969,20 @@ class ExportInventoryView(LoginRequiredMixin, AdminRequiredMixin, FormView):
             buffer = io.StringIO()
             writer = csv.writer(buffer)
             writer.writerow([
-                'Name', 'Hostname', 'IP Address', 'Vendor', 'Device Type',
-                'Port', 'Protocol', 'Location', 'Description', 'Active'
+                'Name', 'Hostname', 'Vendor', 'Platform',
+                'Port', 'Protocol', 'Group', 'Tags', 'Description', 'Active'
             ])
             
-            for device in Device.objects.all():
+            for device in Device.objects.all().prefetch_related('tags'):
                 writer.writerow([
                     device.name,
                     device.hostname,
-                    device.ip_address,
                     device.vendor,
-                    device.device_type,
+                    device.platform or '',
                     device.port,
-                    device.connection_protocol,
-                    device.location,
+                    device.protocol,
+                    device.group.name if device.group else '',
+                    ','.join([t.name for t in device.tags.all()]),
                     device.description,
                     'Yes' if device.is_active else 'No',
                 ])

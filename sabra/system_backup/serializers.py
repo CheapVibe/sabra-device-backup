@@ -68,7 +68,7 @@ def serialize_device(device) -> Dict[str, Any]:
         'port': device.port,
         'credential_profile': device.credential_profile.name if device.credential_profile else None,
         'group': device.group.name if device.group else None,
-        'location': device.location or '',
+        'tags': [tag.name for tag in device.tags.all()],
         'description': device.description,
         'is_active': device.is_active,
         'last_backup_at': device.last_backup_at.isoformat() if device.last_backup_at else None,

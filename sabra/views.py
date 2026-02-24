@@ -442,10 +442,10 @@ class AppExportDownloadView(LoginRequiredMixin, AdminRequiredMixin, View):
         writer = csv.writer(buffer)
         writer.writerow([
             'name', 'hostname', 'vendor', 'platform', 'protocol', 'port',
-            'credential_profile', 'group', 'location', 'description', 'is_active'
+            'credential_profile', 'group', 'tags', 'description', 'is_active'
         ])
         
-        for device in Device.objects.all().select_related('credential_profile', 'group'):
+        for device in Device.objects.all().select_related('credential_profile', 'group').prefetch_related('tags'):
             writer.writerow([
                 device.name,
                 device.hostname,
@@ -455,7 +455,7 @@ class AppExportDownloadView(LoginRequiredMixin, AdminRequiredMixin, View):
                 device.port,
                 device.credential_profile.name if device.credential_profile else '',
                 device.group.name if device.group else '',
-                device.location or '',
+                ','.join([t.name for t in device.tags.all()]),
                 device.description,
                 'Yes' if device.is_active else 'No',
             ])

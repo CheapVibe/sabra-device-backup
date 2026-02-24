@@ -98,6 +98,71 @@ class Vendor(models.Model):
         return [(v.name, v.display_name) for v in cls.objects.filter(is_active=True)]
 
 
+# Color palette for auto-assigning tag colors
+TAG_COLOR_PALETTE = [
+    '#3B82F6',  # Blue
+    '#10B981',  # Green
+    '#F59E0B',  # Amber
+    '#EF4444',  # Red
+    '#8B5CF6',  # Purple
+    '#06B6D4',  # Cyan
+    '#EC4899',  # Pink
+    '#F97316',  # Orange
+    '#14B8A6',  # Teal
+    '#6366F1',  # Indigo
+    '#84CC16',  # Lime
+    '#A855F7',  # Violet
+]
+
+
+def get_next_tag_color():
+    """
+    Get the next color from the palette for a new tag.
+    Rotates through the palette based on existing tag count.
+    """
+    from sabra.inventory.models import DeviceTag
+    count = DeviceTag.objects.count()
+    return TAG_COLOR_PALETTE[count % len(TAG_COLOR_PALETTE)]
+
+
+class DeviceTag(models.Model):
+    """
+    Tag for organizing and categorizing devices.
+    Replaces the simple location field with a flexible tagging system.
+    """
+    
+    name = models.CharField(
+        max_length=50,
+        unique=True,
+        help_text='Tag name (e.g., "datacenter-west", "production", "core-network")'
+    )
+    color = models.CharField(
+        max_length=7,
+        default='#6B7280',
+        help_text='Hex color code for UI display'
+    )
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = 'Device Tag'
+        verbose_name_plural = 'Device Tags'
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+    
+    def save(self, *args, **kwargs):
+        # Auto-assign color for new tags if using default
+        if not self.pk and self.color == '#6B7280':
+            self.color = get_next_tag_color()
+        super().save(*args, **kwargs)
+    
+    @property
+    def device_count(self):
+        return self.devices.filter(is_active=True).count()
+
 class CredentialProfile(models.Model):
     """
     Credential profile for device authentication.
@@ -268,7 +333,12 @@ class Device(models.Model):
         related_name='devices',
         help_text='Device group for organization and bulk operations'
     )
-    location = models.CharField(max_length=200, blank=True)
+    tags = models.ManyToManyField(
+        DeviceTag,
+        blank=True,
+        related_name='devices',
+        help_text='Tags for categorizing and filtering devices'
+    )
     description = models.TextField(blank=True)
     
     # Status

@@ -32,13 +32,13 @@
 <div class="card mb-4">
     <div class="card-body">
         <form method="get" class="row g-3">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">Search</label>
-                <input type="text" class="form-control" name="q" value="{{ request.GET.q }}" placeholder="Device name or hostname">
+                <input type="text" class="form-control" name="q" id="filter-search" value="{{ request.GET.q }}" placeholder="Device name or hostname">
             </div>
             <div class="col-md-2">
                 <label class="form-label">Vendor</label>
-                <select class="form-select" name="vendor">
+                <select class="form-select" name="vendor" id="filter-vendor">
                     <option value="">All Vendors</option>
                     {% for value, label in vendor_choices %}
                     <option value="{{ value }}" {% if request.GET.vendor == value %}selected{% endif %}>{{ label }}</option>
@@ -47,7 +47,7 @@
             </div>
             <div class="col-md-2">
                 <label class="form-label">Group</label>
-                <select class="form-select" name="group">
+                <select class="form-select" name="group" id="filter-group">
                     <option value="">All Groups</option>
                     {% for group in groups %}
                     <option value="{{ group.pk }}" {% if request.GET.group == group.pk|stringformat:"d" %}selected{% endif %}>{{ group.name }}</option>
@@ -55,17 +55,24 @@
                 </select>
             </div>
             <div class="col-md-2">
+                <label class="form-label">Tags</label>
+                <input type="text" id="filter-tags-input" class="form-control" placeholder="Filter by tags...">
+                <input type="hidden" name="tags" id="filter-tags" value="{{ current_tags }}">
+            </div>
+            <div class="col-md-2">
                 <label class="form-label">Status</label>
-                <select class="form-select" name="status">
+                <select class="form-select" name="status" id="filter-status">
                     <option value="">All</option>
                     <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
                     <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
                 </select>
             </div>
-            <div class="col-md-3 d-flex align-items-end">
-                <button type="submit" class="btn btn-outline-primary me-2">
-                    <i class="bi bi-search me-1"></i> Filter
-                </button>
+            <div class="col-md-2 d-flex align-items-end">
+                <noscript>
+                    <button type="submit" class="btn btn-outline-primary me-2">
+                        <i class="bi bi-search me-1"></i> Filter
+                    </button>
+                </noscript>
                 <a href="{% url 'inventory:device_list' %}" class="btn btn-outline-secondary">Clear</a>
             </div>
         </form>
@@ -82,6 +89,8 @@
                         <th>Hostname</th>
                         <th>Vendor</th>
                         <th>Groups</th>
+                        <th>Tags</th>
+                        <th>Credentials</th>
                         <th>Last Backup</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -105,6 +114,20 @@
                         <td>
                             {% if device.group %}
                             <span class="badge" style="background-color: {{ device.group.color }}">{{ device.group.name }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% for tag in device.tags.all %}
+                            <span class="badge" style="background-color: {{ tag.color }}; color: #fff;">{{ tag.name }}</span>
+                            {% empty %}
+                            <span class="text-muted">-</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% if device.credential_profile %}
+                            <span class="badge bg-secondary">{{ device.credential_profile.name }}</span>
                             {% else %}
                             <span class="text-muted">-</span>
                             {% endif %}
@@ -152,7 +175,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7">
+                        <td colspan="9">
                             <div class="empty-state">
                                 <i class="bi bi-hdd-rack"></i>
                                 <h5>No devices found</h5>
@@ -193,4 +216,121 @@
     </ul>
 </nav>
 {% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<!-- Tagify CSS -->
+<link href="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.17.9/dist/tagify.css" rel="stylesheet">
+<style>
+    /* Compact tagify for filter */
+    #filter-tags-input + .tagify {
+        min-height: 38px;
+        border-radius: 0.375rem;
+    }
+    .tagify__tag {
+        --tag-bg: var(--tag-color, #6B7280);
+        --tag-text-color: #fff;
+        --tag-remove-btn-color: #fff;
+    }
+    .tagify__tag > div {
+        color: var(--tag-text-color);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Tagify JS -->
+<script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.17.9/dist/tagify.min.js"></script>
+<script>
+(function() {
+    const form = document.querySelector('.card form');
+    if (!form) return;
+    
+    const searchInput = document.getElementById('filter-search');
+    const selectFilters = ['filter-vendor', 'filter-group', 'filter-status'];
+    let debounceTimer;
+    
+    // Instant filter on select change
+    selectFilters.forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', function() {
+                form.submit();
+            });
+        }
+    });
+    
+    // Debounced filter on search input
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function() {
+                form.submit();
+            }, 400);
+        });
+    }
+    
+    // Tagify for tag filter
+    const tagsInput = document.getElementById('filter-tags-input');
+    const tagsHidden = document.getElementById('filter-tags');
+    const allTags = {{ all_tags|safe }};
+    
+    if (tagsInput && window.Tagify) {
+        // Convert to Tagify whitelist format
+        const whitelist = allTags.map(function(t) {
+            return { value: t.name, color: t.color };
+        });
+        
+        const tagify = new Tagify(tagsInput, {
+            whitelist: whitelist,
+            enforceWhitelist: false,
+            dropdown: {
+                maxItems: 20,
+                enabled: 0,
+                closeOnSelect: true,
+                searchKeys: ['value']
+            },
+            templates: {
+                tag: function(tagData) {
+                    return `<tag title="${tagData.value}" 
+                                contenteditable='false' 
+                                spellcheck='false' 
+                                class="tagify__tag"
+                                style="--tag-color: ${tagData.color || '#6B7280'}">
+                        <x title="remove tag" class="tagify__tag__removeBtn"></x>
+                        <div><span class="tagify__tag-text">${tagData.value}</span></div>
+                    </tag>`;
+                },
+                dropdownItem: function(tagData) {
+                    return `<div class="tagify__dropdown__item" tagifySuggestionIdx="${tagData.tagifySuggestionIdx}">
+                        <span class="badge me-2" style="background-color: ${tagData.color || '#6B7280'};">&nbsp;</span>
+                        ${tagData.value}
+                    </div>`;
+                }
+            }
+        });
+        
+        // Pre-populate from current filter
+        const currentTags = tagsHidden.value;
+        if (currentTags) {
+            const tagNames = currentTags.split(',').filter(Boolean);
+            const tagData = tagNames.map(function(name) {
+                const found = allTags.find(function(t) { return t.name === name; });
+                return { value: name, color: found ? found.color : '#6B7280' };
+            });
+            tagify.addTags(tagData);
+        }
+        
+        // Update hidden field and submit on change
+        tagify.on('change', function(e) {
+            const values = tagify.value.map(function(t) { return t.value; });
+            tagsHidden.value = values.join(',');
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function() {
+                form.submit();
+            }, 300);
+        });
+    }
+})();
+</script>
 {% endblock %}

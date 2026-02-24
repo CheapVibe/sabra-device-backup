@@ -54,12 +54,9 @@
                         <td>{{ snapshot.created_at|date:"d M Y H:i" }}</td>
                         <td>{{ snapshot.deleted_at|date:"d M Y H:i" }}</td>
                         <td>
-                            {% load sabra_tags %}
-                            {% with snapshot.deleted_at as deleted %}
                             <span class="text-warning">
                                 {{ snapshot.deleted_at|timesince }} ago
                             </span>
-                            {% endwith %}
                         </td>
                         <td>{{ snapshot.config_size|filesizeformat }}</td>
                         <td>

@@ -49,3 +49,91 @@
     </div>
 </div>
 {% endblock %}
+
+{% block extra_css %}
+<!-- Tagify CSS -->
+<link href="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.17.9/dist/tagify.css" rel="stylesheet">
+<style>
+    .tagify {
+        --tags-border-color: #dee2e6;
+        --tags-focus-border-color: #86b7fe;
+        border-radius: 0.375rem;
+        min-height: 38px;
+    }
+    .tagify__tag {
+        --tag-bg: var(--tag-color, #6B7280);
+        --tag-text-color: #fff;
+        --tag-remove-btn-color: #fff;
+    }
+    .tagify__tag > div {
+        color: var(--tag-text-color);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Tagify JS -->
+<script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.17.9/dist/tagify.min.js"></script>
+<script>
+(function() {
+    const tagsInput = document.getElementById('tags-tagify');
+    const tagsHidden = document.getElementById('tags-input');
+    
+    if (!tagsInput || !tagsHidden || !window.Tagify) return;
+    
+    // Parse initial tags from hidden input
+    let initialTags = [];
+    try {
+        initialTags = JSON.parse(tagsHidden.value || '[]');
+    } catch (e) {
+        initialTags = [];
+    }
+    
+    const tagify = new Tagify(tagsInput, {
+        whitelist: [],
+        enforceWhitelist: false,
+        dropdown: {
+            maxItems: 20,
+            enabled: 1,
+            closeOnSelect: true,
+            searchKeys: ['value']
+        },
+        templates: {
+            tag: function(tagData) {
+                return `<tag title="${tagData.value}" 
+                            contenteditable='false' 
+                            spellcheck='false' 
+                            class="tagify__tag"
+                            style="--tag-color: ${tagData.color || '#6B7280'}">
+                    <x title="remove tag" class="tagify__tag__removeBtn"></x>
+                    <div><span class="tagify__tag-text">${tagData.value}</span></div>
+                </tag>`;
+            },
+            dropdownItem: function(tagData) {
+                return `<div class="tagify__dropdown__item" tagifySuggestionIdx="${tagData.tagifySuggestionIdx}">
+                    <span class="badge me-2" style="background-color: ${tagData.color || '#6B7280'};">&nbsp;</span>
+                    ${tagData.value}
+                </div>`;
+            }
+        }
+    });
+    
+    // Load initial tags
+    if (initialTags.length > 0) {
+        tagify.addTags(initialTags);
+    }
+    
+    // Fetch whitelist from autocomplete endpoint
+    fetch('{% url "inventory:tag_autocomplete" %}')
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            tagify.whitelist = data;
+        });
+    
+    // Update hidden field on change
+    tagify.on('change', function(e) {
+        tagsHidden.value = e.detail.value;
+    });
+})();
+</script>
+{% endblock %}

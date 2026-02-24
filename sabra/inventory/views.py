@@ -4,9 +4,10 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.db.models import Q, Count
+from django.http import JsonResponse
 
 from sabra.accounts.views import AdminRequiredMixin
-from .models import Device, CredentialProfile, DeviceGroup, Vendor
+from .models import Device, CredentialProfile, DeviceGroup, Vendor, DeviceTag
 from .forms import (
     DeviceForm, CredentialProfileForm, DeviceGroupForm,
     DeviceFilterForm, DeviceBulkActionForm, VendorForm
@@ -26,21 +27,22 @@ class DeviceListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         queryset = Device.objects.select_related(
             'credential_profile', 'group'
-        ).order_by('name')
+        ).prefetch_related('tags').order_by('name')
         
         # Apply filters - use parameter names matching the template
         search = self.request.GET.get('q', '').strip()
         vendor = self.request.GET.get('vendor')
         group = self.request.GET.get('group')
         status = self.request.GET.get('status')
+        tags = self.request.GET.get('tags', '').strip()
         
         if search:
             queryset = queryset.filter(
                 Q(name__icontains=search) |
                 Q(hostname__icontains=search) |
                 Q(description__icontains=search) |
-                Q(location__icontains=search)
-            )
+                Q(tags__name__icontains=search)
+            ).distinct()
         
         if vendor:
             queryset = queryset.filter(vendor=vendor)
@@ -53,6 +55,12 @@ class DeviceListView(LoginRequiredMixin, ListView):
         elif status == 'inactive':
             queryset = queryset.filter(is_active=False)
         
+        # Filter by tags (comma-separated tag names, OR logic)
+        if tags:
+            tag_names = [t.strip() for t in tags.split(',') if t.strip()]
+            if tag_names:
+                queryset = queryset.filter(tags__name__in=tag_names).distinct()
+        
         return queryset
     
     def get_context_data(self, **kwargs):
@@ -60,12 +68,20 @@ class DeviceListView(LoginRequiredMixin, ListView):
         context['filter_form'] = DeviceFilterForm(self.request.GET)
         context['total_count'] = Device.objects.count()
         context['active_count'] = Device.objects.filter(is_active=True).count()
-        # Add vendor choices from the Vendor model
+        # Add vendor choices - only vendors that have at least one device
+        associated_vendor_names = Device.objects.values_list('vendor', flat=True).distinct()
         context['vendor_choices'] = list(
-            Vendor.objects.filter(is_active=True).values_list('name', 'display_name')
+            Vendor.objects.filter(
+                is_active=True,
+                name__in=associated_vendor_names
+            ).values_list('name', 'display_name').order_by('display_name')
         )
         # Add device groups
         context['groups'] = DeviceGroup.objects.all().order_by('name')
+        # Add all tags for filter autocomplete
+        context['all_tags'] = list(DeviceTag.objects.values('name', 'color').order_by('name'))
+        # Current tag filter
+        context['current_tags'] = self.request.GET.get('tags', '')
         return context
 
 
@@ -160,11 +176,15 @@ class DeviceCopyView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
                 'protocol': getattr(source_device, 'protocol', 'ssh'),
                 'port': source_device.port,
                 'credential_profile': source_device.credential_profile,
-                'location': getattr(source_device, 'location', ''),
                 'description': source_device.description,
                 'is_active': source_device.is_active,
                 'group': source_device.group,
             })
+            # Copy tags as JSON for Tagify
+            import json
+            existing_tags = list(source_device.tags.values('name', 'color'))
+            tagify_data = [{'value': t['name'], 'color': t['color']} for t in existing_tags]
+            initial['tags_input'] = json.dumps(tagify_data)
         except Device.DoesNotExist:
             pass
         
@@ -223,6 +243,34 @@ class DeviceBulkActionView(LoginRequiredMixin, AdminRequiredMixin, View):
                 messages.success(request, f'{devices.count()} device(s) moved to group "{group.name}".') 
         
         return redirect('inventory:device_list')
+
+
+# ============== Tag Views ==============
+
+class TagAutocompleteView(LoginRequiredMixin, View):
+    """
+    AJAX endpoint for tag autocomplete suggestions.
+    Returns JSON list of matching tags with colors.
+    """
+    
+    def get(self, request):
+        query = request.GET.get('q', '').strip()
+        
+        tags = DeviceTag.objects.all()
+        
+        if query:
+            tags = tags.filter(name__icontains=query)
+        
+        # Return all tags (with optional filter) for Tagify whitelist
+        data = [
+            {
+                'value': tag.name,
+                'color': tag.color,
+            }
+            for tag in tags.order_by('name')[:50]
+        ]
+        
+        return JsonResponse(data, safe=False)
 
 
 # ============== Credential Profile Views ==============

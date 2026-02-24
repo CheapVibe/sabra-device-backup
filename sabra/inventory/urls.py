@@ -13,6 +13,9 @@ urlpatterns = [
     path('devices/<int:pk>/copy/', views.DeviceCopyView.as_view(), name='device_copy'),
     path('devices/bulk-action/', views.DeviceBulkActionView.as_view(), name='device_bulk_action'),
     
+    # Tags
+    path('tags/autocomplete/', views.TagAutocompleteView.as_view(), name='tag_autocomplete'),
+    
     # Credential Profiles
     path('credentials/', views.CredentialListView.as_view(), name='credential_list'),
     path('credentials/create/', views.CredentialCreateView.as_view(), name='credential_create'),

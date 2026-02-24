@@ -1,17 +1,23 @@
 from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Fieldset, HTML, Div
-from .models import Device, CredentialProfile, DeviceGroup, Vendor
+from .models import Device, CredentialProfile, DeviceGroup, Vendor, DeviceTag
 
 
 class DeviceForm(forms.ModelForm):
     """Form for creating/editing devices."""
     
+    # Hidden field to receive tag data from Tagify as JSON
+    tags_input = forms.CharField(
+        required=False,
+        widget=forms.HiddenInput(attrs={'id': 'tags-input'})
+    )
+    
     class Meta:
         model = Device
         fields = [
             'name', 'hostname', 'vendor', 'platform', 'protocol', 'port',
-            'credential_profile', 'group', 'location', 'description',
+            'credential_profile', 'group', 'description',
             'is_active'
         ]
         widgets = {
@@ -30,6 +36,14 @@ class DeviceForm(forms.ModelForm):
         
         # Ensure group queryset is ordered
         self.fields['group'].queryset = DeviceGroup.objects.all().order_by('name')
+        
+        # Pre-populate tags_input with existing tags for editing
+        if self.instance.pk:
+            import json
+            existing_tags = list(self.instance.tags.values('name', 'color'))
+            # Format for Tagify: [{"value": "tag1", "color": "#xxx"}, ...]
+            tagify_data = [{'value': t['name'], 'color': t['color']} for t in existing_tags]
+            self.initial['tags_input'] = json.dumps(tagify_data)
         
         self.helper = FormHelper()
         self.helper.layout = Layout(
@@ -60,8 +74,15 @@ class DeviceForm(forms.ModelForm):
                 'Organization',
                 Row(
                     Column('group', css_class='col-md-6'),
-                    Column('location', css_class='col-md-6'),
+                    Column(
+                        HTML('''
+                        <label class="form-label">Tags</label>
+                        <input type="text" id="tags-tagify" class="form-control" placeholder="Type to add tags...">
+                        '''),
+                        css_class='col-md-6'
+                    ),
                 ),
+                'tags_input',
             ),
             Fieldset(
                 'Status',
@@ -73,6 +94,42 @@ class DeviceForm(forms.ModelForm):
                 css_class='mt-4'
             ),
         )
+    
+    def save(self, commit=True):
+        import json
+        instance = super().save(commit=False)
+        
+        if commit:
+            instance.save()
+            
+            # Process tags from Tagify input
+            tags_data = self.cleaned_data.get('tags_input', '[]')
+            try:
+                tags_list = json.loads(tags_data) if tags_data else []
+            except json.JSONDecodeError:
+                tags_list = []
+            
+            # Clear existing tags and add new ones
+            instance.tags.clear()
+            
+            for tag_item in tags_list:
+                # Tagify sends either {"value": "name"} or just "name" string
+                if isinstance(tag_item, dict):
+                    tag_name = tag_item.get('value', '').strip()
+                else:
+                    tag_name = str(tag_item).strip()
+                
+                if tag_name:
+                    # Get or create the tag
+                    tag, created = DeviceTag.objects.get_or_create(
+                        name__iexact=tag_name,
+                        defaults={'name': tag_name}
+                    )
+                    instance.tags.add(tag)
+            
+            self._save_m2m()
+        
+        return instance
 
 
 class CredentialProfileForm(forms.ModelForm):

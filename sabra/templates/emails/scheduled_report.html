@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ report_name }}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f5f7fa; line-height: 1.6;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f5f7fa;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <table role="presentation" width="700" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; max-width: 100%;">
+                    
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); padding: 30px 40px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">
+                                {{ report_name }}
+                            </h1>
+                            <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">
+                                {% if report_type == 'backup_summary' %}Backup Summary Report
+                                {% elif report_type == 'change_report' %}Configuration Changes Report
+                                {% elif report_type == 'failure_report' %}Backup Failures Report
+                                {% elif report_type == 'device_status' %}Device Status Report
+                                {% endif %}
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Period Info -->
+                    <tr>
+                        <td style="padding: 20px 40px 10px;">
+                            <p style="margin: 0; font-size: 14px; color: #6b7280; text-align: center;">
+                                {% if data.start_date %}
+                                Period: {{ data.start_date|date:"d M Y" }} — {{ data.end_date|date:"d M Y" }}
+                                {% else %}
+                                Generated: {{ generated_at|date:"d M Y H:i" }}
+                                {% endif %}
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    {% if report_type == 'backup_summary' %}
+                    <!-- Backup Summary Stats -->
+                    <tr>
+                        <td style="padding: 20px 40px;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td width="25%" align="center" style="padding: 15px;">
+                                        <div style="font-size: 36px; font-weight: 700; color: #3b82f6;">{{ data.total_backups }}</div>
+                                        <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Total Backups</div>
+                                    </td>
+                                    <td width="25%" align="center" style="padding: 15px; border-left: 1px solid #e5e7eb;">
+                                        <div style="font-size: 36px; font-weight: 700; color: #10b981;">{{ data.successful }}</div>
+                                        <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Successful</div>
+                                    </td>
+                                    <td width="25%" align="center" style="padding: 15px; border-left: 1px solid #e5e7eb;">
+                                        <div style="font-size: 36px; font-weight: 700; color: {% if data.failed > 0 %}#ef4444{% else %}#9ca3af{% endif %};">{{ data.failed }}</div>
+                                        <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Failed</div>
+                                    </td>
+                                    <td width="25%" align="center" style="padding: 15px; border-left: 1px solid #e5e7eb;">
+                                        <div style="font-size: 36px; font-weight: 700; color: {% if data.success_rate >= 90 %}#10b981{% elif data.success_rate >= 70 %}#f59e0b{% else %}#ef4444{% endif %};">{{ data.success_rate }}%</div>
+                                        <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Success Rate</div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    {% if data.changed > 0 %}
+                    <tr>
+                        <td style="padding: 0 40px 20px;">
+                            <div style="background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 15px 20px; text-align: center;">
+                                <span style="font-size: 14px; color: #92400e;">
+                                    <strong>{{ data.changed }}</strong> configuration{% if data.changed != 1 %}s{% endif %} changed during this period
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    
+                    {% if data.by_vendor %}
+                    <tr>
+                        <td style="padding: 0 40px 20px;">
+                            <h3 style="margin: 0 0 15px; font-size: 16px; color: #374151;">Backups by Vendor</h3>
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                                {% for vendor in data.by_vendor %}
+                                <tr style="{% if forloop.counter|divisibleby:2 %}background: #f9fafb;{% else %}background: #ffffff;{% endif %}">
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: #374151;">{{ vendor.name }}</td>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: #374151; text-align: right; font-weight: 600;">{{ vendor.count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </table>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    
+                    {% elif report_type == 'change_report' %}
+                    <!-- Change Report -->
+                    <tr>
+                        <td style="padding: 20px 40px;">
+                            <div style="text-align: center; padding: 20px; background: #fffbeb; border-radius: 8px;">
+                                <div style="font-size: 48px; font-weight: 700; color: #f59e0b;">{{ data.total_changes }}</div>
+                                <div style="font-size: 14px; color: #92400e; text-transform: uppercase;">Configuration Changes</div>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    {% if data.top_changers %}
+                    <tr>
+                        <td style="padding: 0 40px 20px;">
+                            <h3 style="margin: 0 0 15px; font-size: 16px; color: #374151;">Top Changing Devices</h3>
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                                <tr style="background: #1f2937;">
+                                    <th style="padding: 12px 15px; text-align: left; font-size: 12px; font-weight: 600; color: #ffffff; text-transform: uppercase;">Device</th>
+                                    <th style="padding: 12px 15px; text-align: right; font-size: 12px; font-weight: 600; color: #ffffff; text-transform: uppercase;">Changes</th>
+                                </tr>
+                                {% for device in data.top_changers %}
+                                <tr style="{% if forloop.counter|divisibleby:2 %}background: #f9fafb;{% else %}background: #ffffff;{% endif %}">
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: #374151;">{{ device.device__name }}</td>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #e5e7eb; font-size: 14px; text-align: right;">
+                                        <span style="display: inline-block; padding: 3px 10px; background: #f59e0b; color: #ffffff; border-radius: 4px; font-weight: 600;">{{ device.changes }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </table>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    
+                    {% elif report_type == 'failure_report' %}
+                    <!-- Failure Report -->
+                    <tr>
+                        <td style="padding: 20px 40px;">
+                            <div style="text-align: center; padding: 20px; background: #fef2f2; border-radius: 8px;">
+                                <div style="font-size: 48px; font-weight: 700; color: #ef4444;">{{ data.total_failures }}</div>
+                                <div style="font-size: 14px; color: #991b1b; text-transform: uppercase;">Backup Failures</div>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    {% if data.by_error_type %}
+                    <tr>
+                        <td style="padding: 0 40px 20px;">
+                            <h3 style="margin: 0 0 15px; font-size: 16px; color: #374151;">Failures by Error Type</h3>
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                                {% for error in data.by_error_type %}
+                                <tr style="{% if forloop.counter|divisibleby:2 %}background: #f9fafb;{% else %}background: #ffffff;{% endif %}">
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: #374151; text-transform: capitalize;">{{ error.status|default:"Unknown" }}</td>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #e5e7eb; font-size: 14px; text-align: right;">
+                                        <span style="display: inline-block; padding: 3px 10px; background: #ef4444; color: #ffffff; border-radius: 4px; font-weight: 600;">{{ error.count }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </table>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    
+                    {% if data.problem_devices %}
+                    <tr>
+                        <td style="padding: 0 40px 20px;">
+                            <h3 style="margin: 0 0 15px; font-size: 16px; color: #374151;">Problem Devices</h3>
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                                <tr style="background: #1f2937;">
+                                    <th style="padding: 12px 15px; text-align: left; font-size: 12px; font-weight: 600; color: #ffffff; text-transform: uppercase;">Device</th>
+                                    <th style="padding: 12px 15px; text-align: left; font-size: 12px; font-weight: 600; color: #ffffff; text-transform: uppercase;">Hostname</th>
+                                    <th style="padding: 12px 15px; text-align: right; font-size: 12px; font-weight: 600; color: #ffffff; text-transform: uppercase;">Failures</th>
+                                </tr>
+                                {% for device in data.problem_devices %}
+                                <tr style="{% if forloop.counter|divisibleby:2 %}background: #f9fafb;{% else %}background: #ffffff;{% endif %}">
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: #374151; font-weight: 600;">{{ device.device__name }}</td>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-family: monospace; color: #6b7280;">{{ device.device__hostname }}</td>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #e5e7eb; font-size: 14px; text-align: right;">
+                                        <span style="display: inline-block; padding: 3px 10px; background: #ef4444; color: #ffffff; border-radius: 4px; font-weight: 600;">{{ device.failures }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </table>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    
+                    {% elif report_type == 'device_status' %}
+                    <!-- Device Status Report -->
+                    <tr>
+                        <td style="padding: 20px 40px;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td width="33%" align="center" style="padding: 15px;">
+                                        <div style="font-size: 48px; font-weight: 700; color: #3b82f6;">{{ data.total }}</div>
+                                        <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Total Devices</div>
+                                    </td>
+                                    <td width="33%" align="center" style="padding: 15px; border-left: 1px solid #e5e7eb;">
+                                        <div style="font-size: 48px; font-weight: 700; color: #10b981;">{{ data.healthy }}</div>
+                                        <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Healthy</div>
+                                    </td>
+                                    <td width="33%" align="center" style="padding: 15px; border-left: 1px solid #e5e7eb;">
+                                        <div style="font-size: 48px; font-weight: 700; color: {% if data.unhealthy > 0 %}#ef4444{% else %}#9ca3af{% endif %};">{{ data.unhealthy }}</div>
+                                        <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Unhealthy</div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    {% if data.unhealthy > 0 %}
+                    <tr>
+                        <td style="padding: 0 40px 20px;">
+                            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 15px 20px; text-align: center;">
+                                <span style="font-size: 14px; color: #991b1b;">
+                                    <strong>{{ data.unhealthy }}</strong> device{% if data.unhealthy != 1 %}s{% endif %} require attention
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endif %}
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 30px 40px; background: #f9fafb; border-top: 1px solid #e5e7eb;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td align="center">
+                                        <a href="{{ site_url }}" style="display: inline-block; padding: 12px 30px; background: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">View in Dashboard</a>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td align="center" style="padding-top: 20px;">
+                                        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+                                            This is an automated report from Sabra Device Backup.<br>
+                                            Generated at {{ generated_at|date:"d M Y H:i" }}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
