@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Export Inventory - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Export Inventory</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'inventory:device_list' %}">Inventory</a></li>
+            <li class="breadcrumb-item active">Export</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Export Device Inventory</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.export_format.id_for_label }}" class="form-label">Export Format</label>
+                        {{ form.export_format }}
+                    </div>
+                    
+                    <h6>Include in Export</h6>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            {{ form.include_groups }}
+                            <label class="form-check-label" for="{{ form.include_groups.id_for_label }}">
+                                Device Groups
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            {{ form.include_jobs }}
+                            <label class="form-check-label" for="{{ form.include_jobs.id_for_label }}">
+                                Backup Jobs
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            {{ form.include_credentials }}
+                            <label class="form-check-label" for="{{ form.include_credentials.id_for_label }}">
+                                Credential Profiles (usernames only - passwords are not exportable)
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Note:</strong> Passwords and SSH keys are never exported in plain text. 
+                        After importing on a new system, you'll need to update credentials manually.
+                    </div>
+                    
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        {{ form.errors }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-download"></i> Export Inventory
+                        </button>
+                        <a href="{% url 'inventory:device_list' %}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Export Formats</h5>
+            </div>
+            <div class="card-body">
+                <h6>JSON</h6>
+                <p class="text-muted small">
+                    Full export including all device details, groups, and jobs. 
+                    Can be imported into another Sabra instance.
+                </p>
+                
+                <h6>CSV</h6>
+                <p class="text-muted small">
+                    Devices only in spreadsheet format. 
+                    Useful for inventory management in Excel or other tools.
+                </p>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Use Cases</h5>
+            </div>
+            <div class="card-body">
+                <ul class="text-muted small mb-0">
+                    <li><strong>Backup:</strong> Regular export of device inventory</li>
+                    <li><strong>Migration:</strong> Move devices to new Sabra instance</li>
+                    <li><strong>Audit:</strong> Export for compliance/documentation</li>
+                    <li><strong>Bulk Edit:</strong> Export CSV, edit, re-import</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Configuration Export</h5>
+            </div>
+            <div class="card-body">
+                <a href="{% url 'backups:export_config' %}" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="bi bi-file-earmark-code"></i> Export Configurations
+                </a>
+                <p class="text-muted small mt-2">
+                    Export device configuration backups (running-config files).
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

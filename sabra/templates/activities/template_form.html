@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object %}Edit{% else %}Create{% endif %} Template - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if object %}Edit Command Template{% else %}Create Command Template{% endif %}</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'activities:template_list' %}">Templates</a></li>
+            <li class="breadcrumb-item active">{% if object %}{{ object.name }}{% else %}Create{% endif %}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {% crispy form %}
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Format</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    Enter one command per line. Commands will be executed in order.
+                </p>
+                <h6>Example:</h6>
+                <pre class="bg-light p-2 rounded small mb-0">show version
+show interfaces status
+show ip route summary
+show clock</pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

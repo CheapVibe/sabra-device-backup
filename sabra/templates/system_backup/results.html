@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block title %}Restore Complete - System Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-check-circle me-2 text-success"></i>Restore Complete</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'system_backup:dashboard' %}">System Backup</a></li>
+            <li class="breadcrumb-item active">Results</li>
+        </ol>
+    </nav>
+</div>
+
+<!-- Success Banner -->
+<div class="alert alert-success shadow-sm mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-check-circle-fill fs-1 me-3"></i>
+        <div>
+            <h4 class="alert-heading mb-1">Restore Completed Successfully</h4>
+            <p class="mb-0">Your system backup has been restored. All selected components have been imported.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Results Summary -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card border-success h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-plus-circle-fill fs-2 text-success mb-2"></i>
+                <h2 class="mb-0 text-success">{{ results.total_created }}</h2>
+                <small class="text-muted">Items Created</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-warning h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-pencil-fill fs-2 text-warning mb-2"></i>
+                <h2 class="mb-0 text-warning">{{ results.total_updated }}</h2>
+                <small class="text-muted">Items Updated</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-secondary h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-skip-forward-fill fs-2 text-secondary mb-2"></i>
+                <h2 class="mb-0 text-secondary">{{ results.total_skipped }}</h2>
+                <small class="text-muted">Items Skipped</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-danger h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-exclamation-triangle-fill fs-2 text-danger mb-2"></i>
+                <h2 class="mb-0 text-danger">{{ results.total_errors }}</h2>
+                <small class="text-muted">Errors</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Results Per Component -->
+{% for component, data in results.components.items %}
+{% if data.created > 0 or data.updated > 0 or data.skipped > 0 or data.errors %}
+<div class="card mb-3 shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center {% if data.errors %}bg-danger text-white{% else %}bg-light{% endif %}">
+        <h5 class="card-title mb-0">
+            {% if component == 'credential_profiles' %}
+            <i class="bi bi-key me-2"></i>Credential Profiles
+            {% elif component == 'device_groups' %}
+            <i class="bi bi-collection me-2"></i>Device Groups
+            {% elif component == 'vendors' %}
+            <i class="bi bi-cpu me-2"></i>Vendors
+            {% elif component == 'devices' %}
+            <i class="bi bi-hdd-network me-2"></i>Devices
+            {% elif component == 'backup_jobs' %}
+            <i class="bi bi-calendar-check me-2"></i>Backup Jobs
+            {% elif component == 'config_snapshots' %}
+            <i class="bi bi-file-earmark-code me-2"></i>Config Snapshots
+            {% elif component == 'mail_config' %}
+            <i class="bi bi-envelope me-2"></i>Mail Configuration
+            {% else %}
+            <i class="bi bi-box me-2"></i>{{ component|title }}
+            {% endif %}
+        </h5>
+        <div>
+            {% if data.created > 0 %}
+            <span class="badge bg-success">{{ data.created }} created</span>
+            {% endif %}
+            {% if data.updated > 0 %}
+            <span class="badge bg-warning text-dark">{{ data.updated }} updated</span>
+            {% endif %}
+            {% if data.skipped > 0 %}
+            <span class="badge bg-secondary">{{ data.skipped }} skipped</span>
+            {% endif %}
+            {% if data.errors %}
+            <span class="badge bg-danger">{{ data.errors|length }} errors</span>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if data.items or data.errors %}
+    <div class="card-body p-0">
+        {% if data.items %}
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Status</th>
+                        <th>Item</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in data.items %}
+                    <tr>
+                        <td>
+                            {% if item.action == 'created' %}
+                            <span class="badge bg-success"><i class="bi bi-plus-lg"></i> Created</span>
+                            {% elif item.action == 'updated' %}
+                            <span class="badge bg-warning text-dark"><i class="bi bi-pencil"></i> Updated</span>
+                            {% elif item.action == 'skipped' %}
+                            <span class="badge bg-secondary"><i class="bi bi-skip-forward"></i> Skipped</span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ item.name }}</strong></td>
+                        <td class="text-muted small">{{ item.note|default:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+        
+        {% if data.errors %}
+        <div class="p-3">
+            <h6 class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Errors:</h6>
+            <ul class="list-unstyled mb-0">
+                {% for error in data.errors %}
+                <li class="text-danger mb-1">
+                    <i class="bi bi-x-circle me-1"></i>{{ error }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="card-body text-center text-muted py-4">
+        <i class="bi bi-check-circle fs-4 text-success"></i>
+        <p class="mb-0">Completed successfully</p>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+{% endfor %}
+
+<!-- Navigation -->
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h5 class="mb-2"><i class="bi bi-arrow-right-circle me-2 text-primary"></i>What's Next?</h5>
+                <p class="text-muted mb-md-0">
+                    Your data has been restored. Review the imported items to ensure everything is correct.
+                </p>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex gap-2 flex-wrap justify-content-md-end">
+                    <a href="{% url 'inventory:device_list' %}" class="btn btn-outline-primary">
+                        <i class="bi bi-hdd-network me-1"></i> View Devices
+                    </a>
+                    <a href="{% url 'dashboard' %}" class="btn btn-primary">
+                        <i class="bi bi-house me-1"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

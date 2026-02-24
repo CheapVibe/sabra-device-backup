@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if form_title %}{{ form_title }}{% elif object %}Edit{% else %}Add{% endif %} Device - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if form_title %}{{ form_title }}{% elif object %}Edit Device{% else %}Add Device{% endif %}</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'inventory:device_list' %}">Devices</a></li>
+            <li class="breadcrumb-item active">{% if copy_source %}Copy{% elif object %}{{ object.name }}{% else %}Add{% endif %}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {% crispy form %}
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Help</h5>
+            </div>
+            <div class="card-body">
+                <h6>Vendor Selection</h6>
+                <p class="text-muted small">Select the correct vendor to ensure proper CLI commands are used for configuration backup.</p>
+                
+                <h6>Credentials</h6>
+                <p class="text-muted small">
+                    Credentials are stored encrypted. 
+                    <a href="{% url 'inventory:credential_create' %}">Create new credentials</a> if needed.
+                </p>
+                
+                <h6>SSH Port</h6>
+                <p class="text-muted small">Default is 22 for SSH. Change if your device uses a non-standard port.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+{% if tags_enabled %}
+<!-- Tagify CSS -->
+<link href="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.17.9/dist/tagify.css" rel="stylesheet">
+<style>
+    .tagify {
+        --tags-border-color: #dee2e6;
+        --tags-focus-border-color: #86b7fe;
+        border-radius: 0.375rem;
+        min-height: 38px;
+    }
+    .tagify__tag {
+        --tag-bg: var(--tag-color, #6B7280);
+        --tag-text-color: #fff;
+        --tag-remove-btn-color: #fff;
+    }
+    .tagify__tag > div {
+        color: var(--tag-text-color);
+    }
+</style>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if tags_enabled %}
+<!-- Tagify JS -->
+<script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.17.9/dist/tagify.min.js"></script>
+<script>
+(function() {
+    const tagsInput = document.getElementById('tags-tagify');
+    const tagsHidden = document.getElementById('tags-input');
+    
+    if (!tagsInput || !tagsHidden || !window.Tagify) return;
+    
+    // Parse initial tags from hidden input
+    let initialTags = [];
+    try {
+        initialTags = JSON.parse(tagsHidden.value || '[]');
+    } catch (e) {
+        initialTags = [];
+    }
+    
+    const tagify = new Tagify(tagsInput, {
+        whitelist: [],
+        enforceWhitelist: false,
+        dropdown: {
+            maxItems: 20,
+            enabled: 1,
+            closeOnSelect: true,
+            searchKeys: ['value']
+        },
+        templates: {
+            tag: function(tagData) {
+                return `<tag title="${tagData.value}" 
+                            contenteditable='false' 
+                            spellcheck='false' 
+                            class="tagify__tag"
+                            style="--tag-color: ${tagData.color || '#6B7280'}">
+                    <x title="remove tag" class="tagify__tag__removeBtn"></x>
+                    <div><span class="tagify__tag-text">${tagData.value}</span></div>
+                </tag>`;
+            },
+            dropdownItem: function(tagData) {
+                return `<div ${this.getAttributes(tagData)}
+                            class="${this.settings.classNames.dropdownItem} ${tagData.class || ''}"
+                            tabindex="0" role="option">
+                    <span class="badge me-2" style="background-color: ${tagData.color || '#6B7280'}; pointer-events: none;">&nbsp;</span>
+                    <span style="pointer-events: none;">${tagData.value}</span>
+                </div>`;
+            }
+        }
+    });
+    
+    // Load initial tags
+    if (initialTags.length > 0) {
+        tagify.addTags(initialTags);
+    }
+    
+    // Fetch whitelist from autocomplete endpoint
+    fetch('{% url "inventory:tag_autocomplete" %}')
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            tagify.whitelist = data;
+        });
+    
+    // Update hidden field on change
+    tagify.on('change', function(e) {
+        tagsHidden.value = e.detail.value;
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

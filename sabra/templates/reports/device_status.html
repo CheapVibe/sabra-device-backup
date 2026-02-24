@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}Device Status - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Device Status</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'reports:dashboard' %}">Reports</a></li>
+            <li class="breadcrumb-item active">Device Status</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h2 class="mb-0">{{ total }}</h2>
+                <p class="mb-0">Total Devices</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h2 class="mb-0">{{ healthy }}</h2>
+                <p class="mb-0">Healthy</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-danger text-white">
+            <div class="card-body text-center">
+                <h2 class="mb-0">{{ unhealthy }}</h2>
+                <p class="mb-0">Unhealthy</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">All Active Devices</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th>Hostname</th>
+                        <th>Vendor</th>
+                        <th>Latest Backup</th>
+                        <th>Status</th>
+                        <th>Last Success</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in devices %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'inventory:device_detail' item.device.pk %}">
+                                {{ item.device.name }}
+                            </a>
+                        </td>
+                        <td><code>{{ item.device.hostname }}</code></td>
+                        <td>{{ item.device.get_vendor_display }}</td>
+                        <td>
+                            {% if item.latest_backup %}
+                            {{ item.latest_backup.created_at|sabra_datetime_short }}
+                            {% else %}
+                            <span class="text-muted">Never</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.latest_backup %}
+                                {% if item.latest_backup.status == 'success' %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle me-1"></i> OK
+                                </span>
+                                {% else %}
+                                <span class="badge bg-danger">
+                                    <i class="bi bi-x-circle me-1"></i> {{ item.latest_backup.get_status_display }}
+                                </span>
+                                {% endif %}
+                            {% else %}
+                            <span class="badge bg-secondary">No Backup</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.last_success %}
+                            {{ item.last_success.created_at|sabra_datetime_short }}
+                            {% else %}
+                            <span class="text-danger">Never</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            No active devices.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,362 @@
+{% extends 'base.html' %}
+
+{% block title %}Devices - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Devices</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Devices</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'inventory:device_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Add Device
+        </a>
+        <div class="btn-group ms-2">
+            <a href="{% url 'app_export_download' 'devices' %}" class="btn btn-outline-primary">
+                <i class="bi bi-download"></i> Export CSV
+            </a>
+            <a href="{% url 'app_import' %}" class="btn btn-outline-primary">
+                <i class="bi bi-upload"></i> Import
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Search</label>
+                <input type="text" class="form-control" name="q" id="filter-search" value="{{ request.GET.q }}" placeholder="Device name or hostname">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Vendor</label>
+                <select class="form-select" name="vendor" id="filter-vendor">
+                    <option value="">All Vendors</option>
+                    {% for value, label in vendor_choices %}
+                    <option value="{{ value }}" {% if request.GET.vendor == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Group</label>
+                <select class="form-select" name="group" id="filter-group">
+                    <option value="">All Groups</option>
+                    {% for group in groups %}
+                    <option value="{{ group.pk }}" {% if request.GET.group == group.pk|stringformat:"d" %}selected{% endif %}>{{ group.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Credentials</label>
+                <select class="form-select" name="credential" id="filter-credential">
+                    <option value="">All Credentials</option>
+                    {% for cred_id, cred_name in credential_choices %}
+                    <option value="{{ cred_id }}" {% if request.GET.credential == cred_id|stringformat:"d" %}selected{% endif %}>{{ cred_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if tags_enabled %}
+            <div class="col-md-2">
+                <label class="form-label">Tags</label>
+                <input type="text" id="filter-tags-input" class="form-control" placeholder="Filter by tags...">
+                <input type="hidden" name="tags" id="filter-tags" value="{{ current_tags }}">
+            </div>
+            {% endif %}
+            <div class="col-md-{% if tags_enabled %}1{% else %}3{% endif %}">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status" id="filter-status">
+                    <option value="">All</option>
+                    <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+        </form>
+        <div class="mt-2 text-end">
+            <a href="{% url 'inventory:device_list' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-x-circle me-1"></i>Clear Filters
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Hostname</th>
+                        <th>Vendor</th>
+                        <th>Groups</th>
+                        {% if tags_enabled %}<th>Tags</th>{% endif %}
+                        <th>Credentials</th>
+                        <th>Last Backup</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for device in devices %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'inventory:device_detail' device.pk %}">
+                                <strong>{{ device.name }}</strong>
+                            </a>
+                            {% if not device.is_active %}
+                            <span class="badge bg-secondary ms-1">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td><code>{{ device.hostname }}</code></td>
+                        <td>
+                            <span class="badge bg-light text-dark">{{ device.get_vendor_display }}</span>
+                        </td>
+                        <td>
+                            {% if device.group %}
+                            <span class="badge" style="background-color: {{ device.group.color }}">{{ device.group.name }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        {% if tags_enabled %}
+                        <td>
+                            {% for tag in device.tags.all %}
+                            <span class="badge" style="background-color: {{ tag.color }}; color: #fff;">{{ tag.name }}</span>
+                            {% empty %}
+                            <span class="text-muted">-</span>
+                            {% endfor %}
+                        </td>
+                        {% endif %}
+                        <td>
+                            {% if device.credential_profile %}
+                            <span class="badge bg-secondary">{{ device.credential_profile.name }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if device.last_backup_at %}
+                            {{ device.last_backup_at|timesince }} ago
+                            {% else %}
+                            <span class="text-muted">Never</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if device.last_backup_status == 'success' %}
+                            <span class="badge bg-success">OK</span>
+                            {% elif device.last_backup_status == 'failed' or device.last_backup_status == 'auth_error' or device.last_backup_status == 'timeout' or device.last_backup_status == 'connection_error' or device.last_backup_status == 'enable_mode_failed' %}
+                            <span class="badge bg-danger">Failed</span>
+                            {% elif device.last_backup_status == 'changed' %}
+                            <span class="badge bg-warning text-dark">Changed</span>
+                            {% elif device.last_backup_status == 'new' %}
+                            <span class="badge bg-purple">New</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Unknown</span>
+                            {% endif %}
+                        </td>
+                        <td class="action-buttons d-flex align-items-center">
+                            <a href="{% url 'inventory:device_detail' device.pk %}" class="btn btn-sm btn-outline-secondary" title="View Details">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{% url 'backups:additional_output_latest' device.pk %}" class="btn btn-sm btn-outline-info" title="View Additional Commands">
+                                <i class="bi bi-terminal"></i>
+                            </a>
+                            <form action="{% url 'backups:device_backup' device.pk %}" method="post" class="d-inline ms-3">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-success" title="Backup Now">
+                                    <i class="bi bi-cloud-download"></i>
+                                </button>
+                            </form>
+                            <a href="{% url 'inventory:device_copy' device.pk %}" class="btn btn-sm btn-outline-secondary ms-auto" title="Copy Device">
+                                <i class="bi bi-copy"></i>
+                            </a>
+                            <a href="{% url 'inventory:device_edit' device.pk %}" class="btn btn-sm btn-outline-primary" title="Edit Device">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{% if tags_enabled %}9{% else %}8{% endif %}">
+                            <div class="empty-state">
+                                <i class="bi bi-hdd-rack"></i>
+                                <h5>No devices found</h5>
+                                <p class="text-muted">Add your first network device to start backing up configurations.</p>
+                                <a href="{% url 'inventory:device_create' %}" class="btn btn-primary">
+                                    <i class="bi bi-plus-lg me-1"></i> Add Device
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-4" aria-label="Page navigation">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+        </li>
+        {% endif %}
+        
+        {% for num in page_obj.paginator.page_range %}
+        <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+        </li>
+        {% endfor %}
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+{% if tags_enabled %}
+<!-- Tagify CSS -->
+<link href="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.17.9/dist/tagify.css" rel="stylesheet">
+<style>
+    /* Compact tagify for filter */
+    #filter-tags-input + .tagify {
+        min-height: 38px;
+        border-radius: 0.375rem;
+    }
+    .tagify__tag {
+        --tag-bg: var(--tag-color, #6B7280);
+        --tag-text-color: #fff;
+        --tag-remove-btn-color: #fff;
+    }
+    .tagify__tag > div {
+        color: var(--tag-text-color);
+    }
+</style>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if tags_enabled %}
+<!-- Tagify JS -->
+<script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.17.9/dist/tagify.min.js"></script>
+{% endif %}
+<script>
+(function() {
+    const form = document.querySelector('.card form');
+    if (!form) return;
+    
+    const searchInput = document.getElementById('filter-search');
+    const selectFilters = ['filter-vendor', 'filter-group', 'filter-credential', 'filter-status'];
+    let debounceTimer;
+    
+    // Instant filter on select change
+    selectFilters.forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', function() {
+                form.submit();
+            });
+        }
+    });
+    
+    // Debounced filter on search input
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function() {
+                form.submit();
+            }, 400);
+        });
+    }
+    
+    {% if tags_enabled %}
+    // Tagify for tag filter
+    const tagsInput = document.getElementById('filter-tags-input');
+    const tagsHidden = document.getElementById('filter-tags');
+    const allTags = {{ all_tags|safe }};
+    let isInitializing = true;  // Flag to prevent form submission during initial load
+    
+    if (tagsInput && window.Tagify) {
+        // Convert to Tagify whitelist format
+        const whitelist = allTags.map(function(t) {
+            return { value: t.name, color: t.color };
+        });
+        
+        const tagify = new Tagify(tagsInput, {
+            whitelist: whitelist,
+            enforceWhitelist: true,  // Only allow existing tags for filtering
+            dropdown: {
+                maxItems: 20,
+                enabled: 0,  // Show dropdown on focus
+                closeOnSelect: true,
+                searchKeys: ['value']
+            },
+            templates: {
+                tag: function(tagData) {
+                    return `<tag title="${tagData.value}" 
+                                contenteditable='false' 
+                                spellcheck='false' 
+                                class="tagify__tag"
+                                style="--tag-color: ${tagData.color || '#6B7280'}">
+                        <x title="remove tag" class="tagify__tag__removeBtn"></x>
+                        <div><span class="tagify__tag-text">${tagData.value}</span></div>
+                    </tag>`;
+                },
+                dropdownItem: function(tagData) {
+                    return `<div ${this.getAttributes(tagData)}
+                                class="${this.settings.classNames.dropdownItem} ${tagData.class || ''}"
+                                tabindex="0" role="option">
+                        <span class="badge me-2" style="background-color: ${tagData.color || '#6B7280'}; pointer-events: none;">&nbsp;</span>
+                        <span style="pointer-events: none;">${tagData.value}</span>
+                    </div>`;
+                }
+            }
+        });
+        
+        // Pre-populate from current filter (without triggering form submit)
+        const currentTags = tagsHidden.value;
+        if (currentTags) {
+            const tagNames = currentTags.split(',').filter(Boolean);
+            const tagData = tagNames.map(function(name) {
+                const found = allTags.find(function(t) { return t.name === name; });
+                return { value: name, color: found ? found.color : '#6B7280' };
+            });
+            tagify.addTags(tagData);
+        }
+        
+        // Mark initialization complete after a tick
+        setTimeout(function() { isInitializing = false; }, 100);
+        
+        // Update hidden field and submit on change (only after initialization)
+        tagify.on('change', function(e) {
+            const values = tagify.value.map(function(t) { return t.value; });
+            tagsHidden.value = values.join(',');
+            
+            // Skip form submission during initial page load
+            if (isInitializing) return;
+            
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function() {
+                form.submit();
+            }, 300);
+        });
+    }
+    {% endif %}
+})();
+</script>
+{% endblock %}

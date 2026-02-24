@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block title %}Device Groups - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-collection me-2"></i>Device Groups</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Device Groups</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'app_export_download' 'groups' %}" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-download me-1"></i>Export CSV
+        </a>
+        <a href="{% url 'inventory:group_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Add Group
+        </a>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-white-50 mb-1">Total Groups</h6>
+                        <h2 class="mb-0">{{ groups|length }}</h2>
+                    </div>
+                    <i class="bi bi-collection fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-white-50 mb-1">Groups with Devices</h6>
+                        <h2 class="mb-0">{{ groups_with_devices }}</h2>
+                    </div>
+                    <i class="bi bi-hdd-network fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-info text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-white-50 mb-1">Total Devices in Groups</h6>
+                        <h2 class="mb-0">{{ total_devices_in_groups }}</h2>
+                    </div>
+                    <i class="bi bi-diagram-3 fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    <i class="bi bi-lightbulb me-2"></i>
+    <strong>Pro Tip:</strong> Device groups help organize devices for bulk operations, targeted backup jobs, and easier navigation. 
+    Assign devices to groups from the device edit page.
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">All Device Groups</h5>
+        <span class="badge bg-secondary">{{ groups|length }} group(s)</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 50px;">Color</th>
+                        <th>Group Name</th>
+                        <th>Description</th>
+                        <th class="text-center" style="width: 120px;">Devices</th>
+                        <th style="width: 130px;">Created</th>
+                        <th class="text-end" style="width: 180px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for group in groups %}
+                    <tr>
+                        <td>
+                            <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: {{ group.color }};"></span>
+                        </td>
+                        <td>
+                            <a href="{% url 'inventory:group_detail' group.pk %}" class="text-decoration-none">
+                                <strong>{{ group.name }}</strong>
+                            </a>
+                        </td>
+                        <td class="text-muted">
+                            {% if group.description %}
+                                {{ group.description|truncatewords:20 }}
+                            {% else %}
+                                <span class="text-muted fst-italic">No description</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if group.num_devices > 0 %}
+                            <a href="{% url 'inventory:device_list' %}?group={{ group.pk }}" class="badge bg-primary text-decoration-none">
+                                {{ group.num_devices }} device{{ group.num_devices|pluralize }}
+                            </a>
+                            {% else %}
+                            <span class="badge bg-secondary">0 devices</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ group.created_at|sabra_date }}</small>
+                        </td>
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-1" role="group">
+                                <a href="{% url 'inventory:group_detail' group.pk %}" class="btn btn-sm btn-outline-secondary" title="View Details">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'inventory:group_edit' group.pk %}" class="btn btn-sm btn-outline-primary" title="Edit Group">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{% url 'inventory:group_delete' group.pk %}" class="btn btn-sm btn-outline-danger ms-3" title="Delete Group">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state text-center py-5">
+                                <i class="bi bi-folder fs-1 text-muted"></i>
+                                <h5 class="mt-3">No Device Groups Yet</h5>
+                                <p class="text-muted mb-4">
+                                    Create your first group to organize devices for easier management and backup scheduling.
+                                </p>
+                                <a href="{% url 'inventory:group_create' %}" class="btn btn-primary">
+                                    <i class="bi bi-plus-lg me-1"></i> Create First Group
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

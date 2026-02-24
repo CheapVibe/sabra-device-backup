@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+
+{% block title %}Additional Commands - {{ output.device.name }} - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>{{ output.device.name }} - Additional Commands</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:device_detail' output.device.pk %}">{{ output.device.name }}</a></li>
+                <li class="breadcrumb-item active">Additional Commands</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        {% if output.has_changed %}
+        <a href="{% url 'backups:additional_output_diff' output.pk %}" class="btn btn-warning">
+            <i class="bi bi-file-diff me-1"></i> View Diff
+        </a>
+        {% endif %}
+        <a href="{% url 'backups:additional_output_download' output.pk %}" class="btn btn-primary">
+            <i class="bi bi-download me-1"></i> Download
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Output Details</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Device</dt>
+                    <dd class="col-sm-7">
+                        <a href="{% url 'inventory:device_detail' output.device.pk %}">{{ output.device.name }}</a>
+                    </dd>
+                    
+                    <dt class="col-sm-5">Vendor</dt>
+                    <dd class="col-sm-7">{{ output.device.get_vendor_display }}</dd>
+                    
+                    <dt class="col-sm-5">Timestamp</dt>
+                    <dd class="col-sm-7">{{ output.created_at|sabra_datetime }}</dd>
+                    
+                    <dt class="col-sm-5">Status</dt>
+                    <dd class="col-sm-7">
+                        {% if output.status == 'success' %}
+                        <span class="badge bg-success">Success</span>
+                        {% elif output.status == 'partial' %}
+                        <span class="badge bg-warning text-dark">Partial</span>
+                        {% else %}
+                        <span class="badge bg-danger">Failed</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-5">Commands</dt>
+                    <dd class="col-sm-7">{{ output.get_command_count }}</dd>
+                    
+                    <dt class="col-sm-5">Size</dt>
+                    <dd class="col-sm-7">{{ output.output_size|filesizeformat }}</dd>
+                    
+                    <dt class="col-sm-5">Changed</dt>
+                    <dd class="col-sm-7">
+                        {% if output.has_changed %}
+                        <span class="badge bg-warning text-dark">Yes</span>
+                        {% else %}
+                        <span class="text-muted">No</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-5">Duration</dt>
+                    <dd class="col-sm-7">{{ output.execution_duration|floatformat:2 }}s</dd>
+                </dl>
+            </div>
+        </div>
+        
+        <!-- Commands Executed -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Commands Executed</h5>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for cmd in output.commands_executed.splitlines %}
+                    {% if cmd.strip %}
+                    <li class="list-group-item font-monospace small">{{ cmd }}</li>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        
+        <!-- History -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">History</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for o in history %}
+                    <a href="{% url 'backups:additional_output_view' o.pk %}" 
+                       class="list-group-item list-group-item-action {% if o.pk == output.pk %}active{% endif %}">
+                        <div class="d-flex justify-content-between">
+                            <small>{{ o.created_at|sabra_compact }}</small>
+                            {% if o.has_changed %}
+                            <span class="badge bg-warning text-dark">Changed</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="list-group-item text-muted small">No history available</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-9">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Command Output</h5>
+                <button class="btn btn-sm btn-outline-secondary" onclick="copyOutput()">
+                    <i class="bi bi-clipboard me-1"></i> Copy
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="config-view" id="output-content">{{ output.output_content }}</div>
+            </div>
+        </div>
+        
+        {% if output.error_message %}
+        <div class="card mt-4 border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Error Details</h5>
+            </div>
+            <div class="card-body">
+                <pre class="mb-0">{{ output.error_message }}</pre>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyOutput() {
+    const content = document.getElementById('output-content').innerText;
+    navigator.clipboard.writeText(content).then(function() {
+        // Show toast or notification
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check me-1"></i> Copied!';
+        btn.classList.add('btn-success');
+        btn.classList.remove('btn-outline-secondary');
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-secondary');
+        }, 2000);
+    });
+}
+</script>
+{% endblock %}

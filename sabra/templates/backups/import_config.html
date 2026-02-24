@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Import Configurations - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Import Configurations</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'backups:snapshot_list' %}">Snapshots</a></li>
+            <li class="breadcrumb-item active">Import</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Import Device Configurations</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.import_file.id_for_label }}" class="form-label">Configuration File</label>
+                        {{ form.import_file }}
+                        <div class="form-text">
+                            {{ form.import_file.help_text }}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.import_action.id_for_label }}" class="form-label">Import Action</label>
+                        {{ form.import_action }}
+                        <div class="form-text">
+                            {{ form.import_action.help_text }}
+                        </div>
+                    </div>
+                    
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        {{ form.errors }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-upload"></i> Upload & Review
+                        </button>
+                        <a href="{% url 'backups:snapshot_list' %}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Supported Formats</h5>
+            </div>
+            <div class="card-body">
+                <h6>Sabra Export (JSON)</h6>
+                <p class="text-muted small">
+                    JSON files exported from Sabra Device Backup. Contains full metadata and device mappings.
+                </p>
+                
+                <h6>ZIP/TAR.GZ Archives</h6>
+                <p class="text-muted small">
+                    Archives containing configuration files. Files will be matched to devices by folder/file name.
+                </p>
+                
+                <h6>Single Config Files</h6>
+                <p class="text-muted small">
+                    Individual .txt, .cfg, or .conf files. You'll need to manually select the target device.
+                </p>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Import Actions</h5>
+            </div>
+            <div class="card-body">
+                <h6>Compare Only</h6>
+                <p class="text-muted small">
+                    Shows differences between imported configs and current device configurations. No changes are saved.
+                </p>
+                
+                <h6>Create Snapshots</h6>
+                <p class="text-muted small">
+                    Creates new configuration snapshots from the imported files. Useful for:
+                </p>
+                <ul class="text-muted small">
+                    <li>Migrating from another backup system</li>
+                    <li>Restoring historical backups</li>
+                    <li>Importing manual config exports</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Other Imports</h5>
+            </div>
+            <div class="card-body">
+                <a href="{% url 'backups:import_inventory' %}" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="bi bi-database-up"></i> Import Inventory
+                </a>
+                <p class="text-muted small mt-2">
+                    Import device inventory (devices, groups, jobs) from JSON export.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

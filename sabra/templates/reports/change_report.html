@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}Configuration Changes - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Configuration Changes</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'reports:dashboard' %}">Reports</a></li>
+                <li class="breadcrumb-item active">Changes</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <div class="btn-group">
+            <a href="?days=1" class="btn btn-outline-secondary {% if days == 1 %}active{% endif %}">24h</a>
+            <a href="?days=7" class="btn btn-outline-secondary {% if days == 7 %}active{% endif %}">7d</a>
+            <a href="?days=30" class="btn btn-outline-secondary {% if days == 30 %}active{% endif %}">30d</a>
+            <a href="?days=90" class="btn btn-outline-secondary {% if days == 90 %}active{% endif %}">90d</a>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body text-center">
+                <h2 class="mb-0">{{ total_changes }}</h2>
+                <p class="mb-0">Changes</p>
+            </div>
+        </div>
+        
+        {% if top_changers %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Most Changes</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for item in top_changers %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ item.device__name }}
+                    <span class="badge bg-warning text-dark">{{ item.changes }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-lg-9">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    Changes: {{ start_date|sabra_compact_date }} - {{ end_date|sabra_date }}
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Device</th>
+                                <th>Hostname</th>
+                                <th>Timestamp</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for snapshot in changes %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'inventory:device_detail' snapshot.device.pk %}">
+                                        {{ snapshot.device.name }}
+                                    </a>
+                                </td>
+                                <td><code>{{ snapshot.device.hostname }}</code></td>
+                                <td>{{ snapshot.created_at|sabra_datetime_short }}</td>
+                                <td>
+                                    <a href="{% url 'backups:snapshot_diff' snapshot.pk %}" class="btn btn-sm btn-warning" title="View Diff">
+                                        <i class="bi bi-file-diff"></i>
+                                    </a>
+                                    <a href="{% url 'backups:snapshot_view' snapshot.pk %}" class="btn btn-sm btn-outline-primary" title="View Config">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'backups:additional_output_latest' snapshot.device.pk %}" class="btn btn-sm btn-outline-info" title="Additional Commands">
+                                        <i class="bi bi-terminal"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">
+                                    No configuration changes in this period.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

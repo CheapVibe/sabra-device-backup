@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block title %}Job Executions - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Job Execution History</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item active">Executions</li>
+        </ol>
+    </nav>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Job</label>
+                <select class="form-select" name="job">
+                    <option value="">All Jobs</option>
+                    {% for job in jobs %}
+                    <option value="{{ job.pk }}" {% if request.GET.job == job.pk|stringformat:"d" %}selected{% endif %}>{{ job.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status">
+                    <option value="">All</option>
+                    <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>Completed</option>
+                    <option value="running" {% if request.GET.status == 'running' %}selected{% endif %}>Running</option>
+                    <option value="failed" {% if request.GET.status == 'failed' %}selected{% endif %}>Failed</option>
+                    <option value="partial" {% if request.GET.status == 'partial' %}selected{% endif %}>Partial</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">From Date</label>
+                <input type="date" class="form-control" name="date_from" value="{{ request.GET.date_from }}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary me-2">Filter</button>
+                <a href="{% url 'backups:execution_list' %}" class="btn btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Job</th>
+                        <th>Started</th>
+                        <th>Completed</th>
+                        <th>Duration</th>
+                        <th>Status</th>
+                        <th>Devices</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for execution in executions %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'backups:job_detail' execution.job.pk %}">{{ execution.job.name }}</a>
+                        </td>
+                        <td>{{ execution.started_at|sabra_datetime }}</td>
+                        <td>{{ execution.completed_at|sabra_time|default:"-" }}</td>
+                        <td>{{ execution.duration|default:"-" }}</td>
+                        <td>
+                            {% if execution.status == 'completed' %}
+                            <span class="badge bg-success">Completed</span>
+                            {% elif execution.status == 'running' %}
+                            <span class="badge bg-primary">
+                                <span class="spinner-border spinner-border-sm"></span> Running
+                            </span>
+                            {% elif execution.status == 'failed' %}
+                            <span class="badge bg-danger">Failed</span>
+                            {% elif execution.status == 'partial' %}
+                            <span class="badge bg-warning">Partial</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ execution.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="text-success">{{ execution.successful_devices }}</span> / 
+                            <span class="text-danger">{{ execution.failed_devices }}</span>
+                        </td>
+                        <td>
+                            <a href="{% url 'backups:execution_detail' execution.pk %}" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-eye"></i> Details
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            No executions found
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-4" aria-label="Page navigation">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+        </li>
+        {% endif %}
+        
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Session Results - {{ session.name|default:session.pk }} - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Session Results</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'activities:session_list' %}">CLI Sessions</a></li>
+            <li class="breadcrumb-item active">{{ session.name|default:session.pk }}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Session Info</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Status</dt>
+                    <dd class="col-sm-7">
+                        {% if session.status == 'completed' %}
+                        <span class="badge bg-success">Completed</span>
+                        {% elif session.status == 'running' %}
+                        <span class="badge bg-primary">Running</span>
+                        {% elif session.status == 'pending' %}
+                        <span class="badge bg-secondary">Pending</span>
+                        {% else %}
+                        <span class="badge bg-danger">Failed</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-5">Total</dt>
+                    <dd class="col-sm-7">{{ session.total_devices }}</dd>
+                    
+                    <dt class="col-sm-5">Success</dt>
+                    <dd class="col-sm-7">
+                        <span class="text-success">{{ session.successful_devices }}</span>
+                    </dd>
+                    
+                    <dt class="col-sm-5">Failed</dt>
+                    <dd class="col-sm-7">
+                        <span class="text-danger">{{ session.failed_devices }}</span>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Command</h5>
+            </div>
+            <div class="card-body">
+                <pre class="bg-dark text-light p-3 rounded mb-0"><code>{{ session.command }}</code></pre>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Device Results</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="accordion" id="resultsAccordion">
+                    {% for result in session.results.all %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" 
+                                    type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#result{{ result.pk }}">
+                                <span class="me-2">
+                                    {% if result.status == 'success' %}
+                                    <i class="bi bi-check-circle text-success"></i>
+                                    {% else %}
+                                    <i class="bi bi-x-circle text-danger"></i>
+                                    {% endif %}
+                                </span>
+                                <strong>{{ result.device.name }}</strong>
+                                <span class="text-muted ms-2">({{ result.device.hostname }})</span>
+                                {% if result.duration %}
+                                <span class="badge bg-secondary ms-auto">{{ result.duration }}s</span>
+                                {% endif %}
+                            </button>
+                        </h2>
+                        <div id="result{{ result.pk }}" 
+                             class="accordion-collapse collapse {% if forloop.first %}show{% endif %}"
+                             data-bs-parent="#resultsAccordion">
+                            <div class="accordion-body">
+                                {% if result.status == 'success' %}
+                                <pre class="bg-dark text-light p-3 rounded mb-0" style="max-height: 400px; overflow-y: auto;"><code>{{ result.output }}</code></pre>
+                                {% else %}
+                                <div class="alert alert-danger mb-0">
+                                    <strong>Error:</strong> {{ result.error_message|default:"Connection failed" }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center text-muted py-5">
+                        <p class="mb-0">No results yet.</p>
+                        {% if session.status == 'running' or session.status == 'pending' %}
+                        <p class="small">Refresh to see progress.</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if session.status == 'running' or session.status == 'pending' %}
+<script>
+// Auto-refresh while running
+setTimeout(function() {
+    location.reload();
+}, 5000);
+</script>
+{% endif %}
+{% endblock %}

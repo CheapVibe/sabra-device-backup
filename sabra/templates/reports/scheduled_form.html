@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object %}Edit {% else %}Create {% endif %}Scheduled Report - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if object %}Edit{% else %}Create{% endif %} Scheduled Report</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'reports:dashboard' %}">Reports</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'reports:scheduled_list' %}">Scheduled</a></li>
+            <li class="breadcrumb-item active">{% if object %}{{ object.name }}{% else %}New{% endif %}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Schedule Details</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="id_name" class="form-label">Name</label>
+                        <input type="text" name="name" id="id_name" class="form-control" value="{{ form.name.value|default:'' }}" required>
+                        {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors }}</div>{% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="id_report_type" class="form-label">Report Type</label>
+                        <select name="report_type" id="id_report_type" class="form-select">
+                            {% for value, label in form.fields.report_type.choices %}
+                            <option value="{{ value }}" {% if form.report_type.value == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.report_type.errors %}<div class="text-danger small">{{ form.report_type.errors }}</div>{% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="id_frequency" class="form-label">Frequency</label>
+                        <select name="frequency" id="id_frequency" class="form-select">
+                            {% for value, label in form.fields.frequency.choices %}
+                            <option value="{{ value }}" {% if form.frequency.value == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.frequency.errors %}<div class="text-danger small">{{ form.frequency.errors }}</div>{% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="id_email_recipients" class="form-label">Email Recipients</label>
+                        <input type="text" name="email_recipients" id="id_email_recipients" class="form-control" 
+                               value="{{ form.email_recipients.value|default:'' }}"
+                               placeholder="user@example.com, admin@example.com">
+                        <small class="text-muted">Comma-separated list of email addresses</small>
+                        {% if form.email_recipients.errors %}<div class="text-danger small">{{ form.email_recipients.errors }}</div>{% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" name="is_active" id="id_is_active" class="form-check-input"
+                                   {% if form.is_active.value %}checked{% endif %}>
+                            <label for="id_is_active" class="form-check-label">Active</label>
+                        </div>
+                        {% if form.is_active.errors %}<div class="text-danger small">{{ form.is_active.errors }}</div>{% endif %}
+                    </div>
+                    
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="{% url 'reports:scheduled_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i>
+                            {% if object %}Save Changes{% else %}Create Schedule{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

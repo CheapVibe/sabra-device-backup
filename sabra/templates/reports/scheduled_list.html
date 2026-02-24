@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Scheduled Reports - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Scheduled Reports</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'reports:dashboard' %}">Reports</a></li>
+                <li class="breadcrumb-item active">Scheduled</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'reports:scheduled_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Add Schedule
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Report Type</th>
+                        <th>Frequency</th>
+                        <th>Recipients</th>
+                        <th>Status</th>
+                        <th>Last Sent</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for schedule in scheduled_reports %}
+                    <tr>
+                        <td>{{ schedule.name }}</td>
+                        <td>
+                            <span class="badge bg-primary">{{ schedule.get_report_type_display }}</span>
+                        </td>
+                        <td>{{ schedule.get_frequency_display }}</td>
+                        <td>
+                            <small class="text-muted">{{ schedule.email_recipients|truncatechars:30 }}</small>
+                        </td>
+                        <td>
+                            {% if schedule.is_active %}
+                            <span class="badge bg-success">Active</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ schedule.last_sent_at|sabra_datetime_short|default:"-" }}</td>
+                        <td>
+                            <a href="{% url 'reports:scheduled_edit' schedule.pk %}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'reports:scheduled_delete' schedule.pk %}" class="btn btn-sm btn-outline-danger" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            No scheduled reports configured.<br>
+                            <a href="{% url 'reports:scheduled_create' %}">Create one</a> to receive automatic reports.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

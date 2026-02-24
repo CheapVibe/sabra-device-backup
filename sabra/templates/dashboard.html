@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Dashboard</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item active">Overview</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'backups:job_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> New Backup Job
+        </a>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card primary h-100">
+            <div class="card-body">
+                <div class="stat-value text-primary">{{ stats.total_devices }}</div>
+                <div class="stat-label">Total Devices</div>
+                <small class="text-muted">{{ stats.active_devices }} active</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card success h-100">
+            <div class="card-body">
+                <div class="stat-value text-success">{{ stats.successful_backups_today }}</div>
+                <div class="stat-label">Backups Today</div>
+                <small class="text-muted">{{ stats.changes_detected }} changes detected</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card danger h-100">
+            <div class="card-body">
+                <div class="stat-value text-danger">{{ stats.failed_backups_today }}</div>
+                <div class="stat-label">Failed Today</div>
+                <small class="text-muted">{{ stats.devices_with_issues }} devices with issues</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card info h-100">
+            <div class="card-body">
+                <div class="stat-value text-info">{{ stats.scheduled_jobs }}</div>
+                <div class="stat-label">Scheduled Jobs</div>
+                <small class="text-muted">{{ stats.jobs_running }} currently running</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Recent Executions -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Recent Job Executions</h5>
+                <a href="{% url 'backups:execution_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Job</th>
+                                <th>Status</th>
+                                <th>Devices</th>
+                                <th>Started</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for execution in recent_executions %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'backups:execution_detail' execution.pk %}">
+                                        {{ execution.job.name }}
+                                    </a>
+                                </td>
+                                <td>
+                                    {% if execution.status == 'completed' %}
+                                        <span class="badge bg-success">Completed</span>
+                                    {% elif execution.status == 'running' %}
+                                        <span class="badge bg-primary">
+                                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                                            Running
+                                        </span>
+                                    {% elif execution.status == 'failed' %}
+                                        <span class="badge bg-danger">Failed</span>
+                                    {% elif execution.status == 'partial' %}
+                                        <span class="badge bg-warning">Partial</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ execution.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="text-success">{{ execution.successful_devices }}</span> / 
+                                    <span class="text-danger">{{ execution.failed_devices }}</span>
+                                </td>
+                                <td>{{ execution.started_at|timesince }} ago</td>
+                                <td>{{ execution.duration|default:"-" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    No executions yet
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Changes -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Recent Config Changes</h5>
+                <a href="{% url 'backups:snapshot_list' %}?changed=1" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for snapshot in recent_changes %}
+                    <a href="{% url 'backups:snapshot_diff' snapshot.pk %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ snapshot.device.name }}</strong>
+                                <br>
+                                <small class="text-muted">{{ snapshot.device.get_vendor_display }}</small>
+                            </div>
+                            <small class="text-muted">{{ snapshot.created_at|timesince }} ago</small>
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="list-group-item text-center text-muted py-4">
+                        No recent changes
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Devices with Issues -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Devices with Issues</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for device in devices_with_issues %}
+                    <a href="{% url 'inventory:device_detail' device.pk %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ device.name }}</strong>
+                                <br>
+                                <small class="text-danger">{{ device.last_backup_status }}</small>
+                            </div>
+                            <span class="badge bg-danger">Failed</span>
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="list-group-item text-center text-muted py-4">
+                        <i class="bi bi-check-circle text-success fs-4"></i>
+                        <br>
+                        All devices healthy
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upcoming Jobs -->
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Scheduled Backup Jobs</h5>
+        <a href="{% url 'backups:job_list' %}" class="btn btn-sm btn-outline-primary">Manage Jobs</a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Job Name</th>
+                        <th>Schedule</th>
+                        <th>Devices</th>
+                        <th>Last Run</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in scheduled_jobs %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'backups:job_detail' job.pk %}">{{ job.name }}</a>
+                        </td>
+                        <td><code>{{ job.schedule_cron }}</code></td>
+                        <td>{{ job.device_count }} devices</td>
+                        <td>
+                            {% if job.last_run_at %}
+                            {{ job.last_run_at|timesince }} ago
+                            {% else %}
+                            <span class="text-muted">Never</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if job.is_enabled %}
+                                <span class="badge bg-success">Enabled</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Disabled</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form action="{% url 'backups:job_run' job.pk %}" method="post" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-primary" title="Run Now">
+                                    <i class="bi bi-play-fill"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            No scheduled jobs. <a href="{% url 'backups:job_create' %}">Create one</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

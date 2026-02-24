@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ report.title }} - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>{{ report.title }}</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'reports:dashboard' %}">Reports</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'reports:history' %}">History</a></li>
+                <li class="breadcrumb-item active">{{ report.title }}</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'reports:export_csv' report.pk %}" class="btn btn-outline-primary">
+            <i class="bi bi-download me-1"></i> Export CSV
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Report Details</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Type</dt>
+                    <dd class="col-sm-7">
+                        <span class="badge bg-primary">{{ report.get_report_type_display }}</span>
+                    </dd>
+                    
+                    <dt class="col-sm-5">Period</dt>
+                    <dd class="col-sm-7">
+                        {{ report.period_start|sabra_compact_date }} - {{ report.period_end|sabra_date }}
+                    </dd>
+                    
+                    <dt class="col-sm-5">Created</dt>
+                    <dd class="col-sm-7">{{ report.created_at|sabra_datetime_short }}</dd>
+                    
+                    {% if report.created_by %}
+                    <dt class="col-sm-5">Created By</dt>
+                    <dd class="col-sm-7">{{ report.created_by.username }}</dd>
+                    {% endif %}
+                    
+                    <dt class="col-sm-5">Emailed</dt>
+                    <dd class="col-sm-7">
+                        {% if report.emailed %}
+                        <span class="badge bg-success">Yes</span>
+                        {% else %}
+                        <span class="badge bg-secondary">No</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+        
+        {% if report.statistics %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Statistics</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    {% for key, value in report.statistics.items %}
+                    <dt class="col-sm-7">{{ key|title }}</dt>
+                    <dd class="col-sm-5">{{ value }}</dd>
+                    {% endfor %}
+                </dl>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-lg-9">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Report Content</h5>
+            </div>
+            <div class="card-body">
+                {% if report.content_html %}
+                {{ report.content_html|safe }}
+                {% else %}
+                <p class="text-muted mb-0">No content available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

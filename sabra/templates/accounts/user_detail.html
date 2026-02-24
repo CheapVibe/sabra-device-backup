@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ object.username }} - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>{{ object.get_full_name|default:object.username }}</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'accounts:user_list' %}">Users</a></li>
+                <li class="breadcrumb-item active">{{ object.username }}</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'accounts:user_edit' object.pk %}" class="btn btn-primary">
+            <i class="bi bi-pencil me-1"></i> Edit
+        </a>
+        {% if object.pk != user.pk %}
+        <a href="{% url 'accounts:user_delete' object.pk %}" class="btn btn-danger">
+            <i class="bi bi-trash me-1"></i> Delete
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">User Details</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Username</dt>
+                    <dd class="col-sm-8"><code>{{ object.username }}</code></dd>
+                    
+                    <dt class="col-sm-4">Email</dt>
+                    <dd class="col-sm-8">{{ object.email|default:"-" }}</dd>
+                    
+                    <dt class="col-sm-4">First Name</dt>
+                    <dd class="col-sm-8">{{ object.first_name|default:"-" }}</dd>
+                    
+                    <dt class="col-sm-4">Last Name</dt>
+                    <dd class="col-sm-8">{{ object.last_name|default:"-" }}</dd>
+                    
+                    <dt class="col-sm-4">Role</dt>
+                    <dd class="col-sm-8">
+                        <span class="badge {% if object.role == 'admin' %}bg-primary{% else %}bg-secondary{% endif %}">
+                            {{ object.get_role_display }}
+                        </span>
+                    </dd>
+                    
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">
+                        {% if object.is_active %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-danger">Inactive</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Activity</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Last Login</dt>
+                    <dd class="col-sm-7">{{ object.last_login|sabra_datetime_short|default:"Never" }}</dd>
+                    
+                    <dt class="col-sm-5">Date Joined</dt>
+                    <dd class="col-sm-7">{{ object.date_joined|sabra_datetime_short }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Permissions</h5>
+            </div>
+            <div class="card-body">
+                {% if object.role == 'admin' %}
+                <div class="alert alert-primary mb-0">
+                    <i class="bi bi-shield-check me-2"></i>
+                    <strong>Administrator</strong> - Full access to all features including user management.
+                </div>
+                {% else %}
+                <div class="alert alert-secondary mb-0">
+                    <i class="bi bi-person me-2"></i>
+                    <strong>Operator</strong> - Can manage devices, backups, and view reports. Cannot manage users.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

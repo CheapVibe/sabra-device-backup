@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ job.name }} - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>{{ job.name }}</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'backups:job_list' %}">Backup Jobs</a></li>
+                <li class="breadcrumb-item active">{{ job.name }}</li>
+            </ol>
+        </nav>
+    </div>
+    <div class="d-flex gap-2">
+        <form action="{% url 'backups:job_run' job.pk %}" method="post" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-play-fill me-1"></i> Run Now
+            </button>
+        </form>
+        <a href="{% url 'backups:job_edit' job.pk %}" class="btn btn-primary">
+            <i class="bi bi-pencil me-1"></i> Edit
+        </a>
+        <a href="{% url 'backups:job_copy' job.pk %}" class="btn btn-secondary">
+            <i class="bi bi-copy me-1"></i> Copy
+        </a>
+        <a href="{% url 'backups:job_delete' job.pk %}" class="btn btn-danger ms-3">
+            <i class="bi bi-trash me-1"></i> Delete
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <!-- Job Info -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Job Configuration</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Status</dt>
+                    <dd class="col-sm-7">
+                        {% if job.is_enabled %}
+                        <span class="badge bg-success">Enabled</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Disabled</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-5">Schedule</dt>
+                    <dd class="col-sm-7"><code>{{ job.schedule_cron|default:"Manual" }}</code></dd>
+                    
+                    <dt class="col-sm-5">Last Run</dt>
+                    <dd class="col-sm-7">{{ job.last_run_at|default:"Never" }}</dd>
+                    
+                    <dt class="col-sm-5">Next Run</dt>
+                    <dd class="col-sm-7">{{ job.next_run_at|default:"-" }}</dd>
+                    
+                    <dt class="col-sm-5">Total Runs</dt>
+                    <dd class="col-sm-7">{{ job.run_count }}</dd>
+                </dl>
+            </div>
+        </div>
+        
+        <!-- Email Notifications -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Notifications</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2">
+                    <i class="bi bi-{% if job.email_on_completion %}check-circle text-success{% else %}x-circle text-muted{% endif %} me-2"></i>
+                    Notify on completion
+                </p>
+                <p class="mb-2">
+                    <i class="bi bi-{% if job.email_on_failure %}check-circle text-success{% else %}x-circle text-muted{% endif %} me-2"></i>
+                    Notify on failure
+                </p>
+                <p class="mb-2">
+                    <i class="bi bi-{% if job.email_on_change %}check-circle text-success{% else %}x-circle text-muted{% endif %} me-2"></i>
+                    Notify on config change
+                </p>
+                
+                {% if job.email_recipients %}
+                <hr>
+                <h6>Recipients</h6>
+                <p class="text-muted small mb-0">{{ job.email_recipients|linebreaksbr }}</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Devices -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Devices ({{ devices|length }})</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                    {% for device in devices %}
+                    <a href="{% url 'inventory:device_detail' device.pk %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ device.name }}</strong>
+                                <br>
+                                <small class="text-muted">{{ device.hostname }}</small>
+                            </div>
+                            <span class="badge bg-light text-dark">{{ device.get_vendor_display }}</span>
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="list-group-item text-center text-muted py-3">
+                        No devices in this job
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Execution History -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Execution History</h5>
+                <a href="{% url 'backups:execution_list' %}?job={{ job.pk }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Started</th>
+                                <th>Status</th>
+                                <th>Duration</th>
+                                <th>Success</th>
+                                <th>Failed</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for execution in recent_executions %}
+                            <tr>
+                                <td>{{ execution.started_at|sabra_datetime_short }}</td>
+                                <td>
+                                    {% if execution.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                    {% elif execution.status == 'running' %}
+                                    <span class="badge bg-primary">
+                                        <span class="spinner-border spinner-border-sm"></span> Running
+                                    </span>
+                                    {% elif execution.status == 'failed' %}
+                                    <span class="badge bg-danger">Failed</span>
+                                    {% elif execution.status == 'partial' %}
+                                    <span class="badge bg-warning">Partial</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ execution.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ execution.duration|default:"-" }}</td>
+                                <td class="text-success">{{ execution.successful_devices }}</td>
+                                <td class="text-danger">{{ execution.failed_devices }}</td>
+                                <td>
+                                    <a href="{% url 'backups:execution_detail' execution.pk %}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    No executions yet
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

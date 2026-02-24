@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block title %}Config Snapshots - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Configuration Snapshots</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item active">Snapshots</li>
+        </ol>
+    </nav>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Device</label>
+                <select class="form-select" name="device">
+                    <option value="">All Devices</option>
+                    {% for device in devices %}
+                    <option value="{{ device.pk }}" {% if request.GET.device == device.pk|stringformat:"d" %}selected{% endif %}>{{ device.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status">
+                    <option value="">All</option>
+                    <option value="success" {% if request.GET.status == 'success' %}selected{% endif %}>Success</option>
+                    <option value="failed" {% if request.GET.status == 'failed' %}selected{% endif %}>Failed</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Changed</label>
+                <select class="form-select" name="changed">
+                    <option value="">All</option>
+                    <option value="1" {% if request.GET.changed == '1' %}selected{% endif %}>Changed Only</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Date From</label>
+                <input type="date" class="form-control" name="date_from" value="{{ request.GET.date_from }}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary me-2">Filter</button>
+                <a href="{% url 'backups:snapshot_list' %}" class="btn btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Action buttons -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{% url 'backups:quick_backup' %}" class="btn btn-primary">
+            <i class="bi bi-play-fill"></i> Quick Backup
+        </a>
+        <a href="{% url 'backups:compare_selector' %}" class="btn btn-outline-warning ms-2">
+            <i class="bi bi-file-diff"></i> Compare Configs
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th>Timestamp</th>
+                        <th>Status</th>
+                        <th>Size</th>
+                        <th>Changed</th>
+                        <th>Protected</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for snapshot in snapshots %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'inventory:device_detail' snapshot.device.pk %}">
+                                {{ snapshot.device.name }}
+                            </a>
+                            <br>
+                            <small class="text-muted">{{ snapshot.device.get_vendor_display }}</small>
+                        </td>
+                        <td>{{ snapshot.created_at|sabra_datetime }}</td>
+                        <td>
+                            {% if snapshot.status == 'success' %}
+                            <span class="badge bg-success">Success</span>
+                            {% else %}
+                            <span class="badge bg-danger">Failed</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ snapshot.config_size|filesizeformat }}</td>
+                        <td>
+                            {% if snapshot.has_changed %}
+                            <span class="badge bg-warning text-dark">
+                                <i class="bi bi-exclamation-triangle me-1"></i>Changed
+                            </span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if snapshot.is_protected %}
+                            <span class="badge bg-primary" title="{{ snapshot.protected_reason }}">
+                                <i class="bi bi-shield-check me-1"></i>Protected
+                            </span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="action-buttons">
+                            <a href="{% url 'backups:snapshot_view' snapshot.pk %}" class="btn btn-sm btn-outline-secondary" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{% url 'backups:additional_output_latest' snapshot.device.pk %}" class="btn btn-sm btn-outline-info" title="Additional Commands">
+                                <i class="bi bi-terminal"></i>
+                            </a>
+                            {% if snapshot.has_changed %}
+                            <a href="{% url 'backups:snapshot_diff' snapshot.pk %}" class="btn btn-sm btn-outline-warning" title="Diff">
+                                <i class="bi bi-file-diff"></i>
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'backups:snapshot_download' snapshot.pk %}" class="btn btn-sm btn-outline-primary" title="Download">
+                                <i class="bi bi-download"></i>
+                            </a>
+                            <form action="{% url 'backups:snapshot_protect' snapshot.pk %}" method="post" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.path }}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
+                                {% if snapshot.is_protected %}
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Unprotect">
+                                    <i class="bi bi-shield"></i>
+                                </button>
+                                {% else %}
+                                <button type="submit" class="btn btn-sm btn-outline-primary" title="Protect from retention">
+                                    <i class="bi bi-shield-plus"></i>
+                                </button>
+                                {% endif %}
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            No snapshots found
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+        </li>
+        {% endif %}
+        
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}
