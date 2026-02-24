@@ -59,6 +59,11 @@ def serialize_device(device) -> Dict[str, Any]:
     """
     Serialize a Device with references to related objects by name.
     """
+    # Gracefully handle tags if table doesn't exist
+    try:
+        device_tags = [tag.name for tag in device.tags.all()]
+    except Exception:
+        device_tags = []
     return {
         'name': device.name,
         'hostname': device.hostname,
@@ -68,7 +73,7 @@ def serialize_device(device) -> Dict[str, Any]:
         'port': device.port,
         'credential_profile': device.credential_profile.name if device.credential_profile else None,
         'group': device.group.name if device.group else None,
-        'tags': [tag.name for tag in device.tags.all()],
+        'tags': device_tags,
         'description': device.description,
         'is_active': device.is_active,
         'last_backup_at': device.last_backup_at.isoformat() if device.last_backup_at else None,

@@ -445,7 +445,12 @@ class AppExportDownloadView(LoginRequiredMixin, AdminRequiredMixin, View):
             'credential_profile', 'group', 'tags', 'description', 'is_active'
         ])
         
-        for device in Device.objects.all().select_related('credential_profile', 'group').prefetch_related('tags'):
+        for device in Device.objects.all().select_related('credential_profile', 'group'):
+            # Gracefully handle tags if table doesn't exist
+            try:
+                tags_str = ','.join([t.name for t in device.tags.all()])
+            except Exception:
+                tags_str = ''
             writer.writerow([
                 device.name,
                 device.hostname,
@@ -455,7 +460,7 @@ class AppExportDownloadView(LoginRequiredMixin, AdminRequiredMixin, View):
                 device.port,
                 device.credential_profile.name if device.credential_profile else '',
                 device.group.name if device.group else '',
-                ','.join([t.name for t in device.tags.all()]),
+                tags_str,
                 device.description,
                 'Yes' if device.is_active else 'No',
             ])

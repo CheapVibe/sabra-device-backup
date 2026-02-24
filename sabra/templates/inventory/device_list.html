@@ -32,7 +32,7 @@
 <div class="card mb-4">
     <div class="card-body">
         <form method="get" class="row g-3">
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <label class="form-label">Search</label>
                 <input type="text" class="form-control" name="q" id="filter-search" value="{{ request.GET.q }}" placeholder="Device name or hostname">
             </div>
@@ -54,11 +54,13 @@
                     {% endfor %}
                 </select>
             </div>
+            {% if tags_enabled %}
             <div class="col-md-2">
                 <label class="form-label">Tags</label>
                 <input type="text" id="filter-tags-input" class="form-control" placeholder="Filter by tags...">
                 <input type="hidden" name="tags" id="filter-tags" value="{{ current_tags }}">
             </div>
+            {% endif %}
             <div class="col-md-2">
                 <label class="form-label">Status</label>
                 <select class="form-select" name="status" id="filter-status">
@@ -67,7 +69,7 @@
                     <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
                 </select>
             </div>
-            <div class="col-md-2 d-flex align-items-end">
+            <div class="col-md-{% if tags_enabled %}1{% else %}3{% endif %} d-flex align-items-end">
                 <noscript>
                     <button type="submit" class="btn btn-outline-primary me-2">
                         <i class="bi bi-search me-1"></i> Filter
@@ -89,7 +91,7 @@
                         <th>Hostname</th>
                         <th>Vendor</th>
                         <th>Groups</th>
-                        <th>Tags</th>
+                        {% if tags_enabled %}<th>Tags</th>{% endif %}
                         <th>Credentials</th>
                         <th>Last Backup</th>
                         <th>Status</th>
@@ -118,6 +120,7 @@
                             <span class="text-muted">-</span>
                             {% endif %}
                         </td>
+                        {% if tags_enabled %}
                         <td>
                             {% for tag in device.tags.all %}
                             <span class="badge" style="background-color: {{ tag.color }}; color: #fff;">{{ tag.name }}</span>
@@ -125,6 +128,7 @@
                             <span class="text-muted">-</span>
                             {% endfor %}
                         </td>
+                        {% endif %}
                         <td>
                             {% if device.credential_profile %}
                             <span class="badge bg-secondary">{{ device.credential_profile.name }}</span>
@@ -175,7 +179,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9">
+                        <td colspan="{% if tags_enabled %}9{% else %}8{% endif %}">
                             <div class="empty-state">
                                 <i class="bi bi-hdd-rack"></i>
                                 <h5>No devices found</h5>
@@ -219,6 +223,7 @@
 {% endblock %}
 
 {% block extra_css %}
+{% if tags_enabled %}
 <!-- Tagify CSS -->
 <link href="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.17.9/dist/tagify.css" rel="stylesheet">
 <style>
@@ -236,11 +241,14 @@
         color: var(--tag-text-color);
     }
 </style>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
+{% if tags_enabled %}
 <!-- Tagify JS -->
 <script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.17.9/dist/tagify.min.js"></script>
+{% endif %}
 <script>
 (function() {
     const form = document.querySelector('.card form');
@@ -270,6 +278,7 @@
         });
     }
     
+    {% if tags_enabled %}
     // Tagify for tag filter
     const tagsInput = document.getElementById('filter-tags-input');
     const tagsHidden = document.getElementById('filter-tags');
@@ -331,6 +340,7 @@
             }, 300);
         });
     }
+    {% endif %}
 })();
 </script>
 {% endblock %}

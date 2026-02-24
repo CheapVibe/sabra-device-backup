@@ -900,7 +900,12 @@ class ExportInventoryView(LoginRequiredMixin, AdminRequiredMixin, FormView):
             }
             
             # Export devices
-            for device in Device.objects.all().prefetch_related('tags'):
+            for device in Device.objects.all():
+                # Gracefully handle tags if table doesn't exist
+                try:
+                    device_tags = [t.name for t in device.tags.all()]
+                except Exception:
+                    device_tags = []
                 device_data = {
                     'name': device.name,
                     'hostname': device.hostname,
@@ -909,7 +914,7 @@ class ExportInventoryView(LoginRequiredMixin, AdminRequiredMixin, FormView):
                     'port': device.port,
                     'protocol': device.protocol,
                     'description': device.description,
-                    'tags': [t.name for t in device.tags.all()],
+                    'tags': device_tags,
                     'is_active': device.is_active,
                 }
                 
@@ -973,7 +978,12 @@ class ExportInventoryView(LoginRequiredMixin, AdminRequiredMixin, FormView):
                 'Port', 'Protocol', 'Group', 'Tags', 'Description', 'Active'
             ])
             
-            for device in Device.objects.all().prefetch_related('tags'):
+            for device in Device.objects.all():
+                # Gracefully handle tags if table doesn't exist
+                try:
+                    tags_str = ','.join([t.name for t in device.tags.all()])
+                except Exception:
+                    tags_str = ''
                 writer.writerow([
                     device.name,
                     device.hostname,
@@ -982,7 +992,7 @@ class ExportInventoryView(LoginRequiredMixin, AdminRequiredMixin, FormView):
                     device.port,
                     device.protocol,
                     device.group.name if device.group else '',
-                    ','.join([t.name for t in device.tags.all()]),
+                    tags_str,
                     device.description,
                     'Yes' if device.is_active else 'No',
                 ])

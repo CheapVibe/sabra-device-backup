@@ -100,6 +100,7 @@
         </div>
         
         <!-- Tags -->
+        {% if tags_enabled %}
         <div class="card mt-4">
             <div class="card-header">
                 <h5 class="card-title mb-0">Tags</h5>
@@ -112,6 +113,7 @@
                 {% endfor %}
             </div>
         </div>
+        {% endif %}
         
         <!-- Backup Status -->
         <div class="card mt-4">

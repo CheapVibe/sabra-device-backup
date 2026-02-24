@@ -4,6 +4,7 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.db.models import Q, Count
+from django.db import connection
 from django.http import JsonResponse
 
 from sabra.accounts.views import AdminRequiredMixin
@@ -12,6 +13,22 @@ from .forms import (
     DeviceForm, CredentialProfileForm, DeviceGroupForm,
     DeviceFilterForm, DeviceBulkActionForm, VendorForm
 )
+
+
+def is_tags_table_available():
+    """
+    Check if the DeviceTag table exists in the database.
+    Used to gracefully degrade when migrations haven't been applied.
+    """
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT 1 FROM information_schema.tables WHERE table_name = %s",
+                ['inventory_devicetag']
+            )
+            return cursor.fetchone() is not None
+    except Exception:
+        return False
 
 
 # ============== Device Views ==============
@@ -27,7 +44,12 @@ class DeviceListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         queryset = Device.objects.select_related(
             'credential_profile', 'group'
-        ).prefetch_related('tags').order_by('name')
+        ).order_by('name')
+        
+        # Check if tags table is available
+        tags_available = is_tags_table_available()
+        if tags_available:
+            queryset = queryset.prefetch_related('tags')
         
         # Apply filters - use parameter names matching the template
         search = self.request.GET.get('q', '').strip()
@@ -37,12 +59,15 @@ class DeviceListView(LoginRequiredMixin, ListView):
         tags = self.request.GET.get('tags', '').strip()
         
         if search:
-            queryset = queryset.filter(
+            search_q = (
                 Q(name__icontains=search) |
                 Q(hostname__icontains=search) |
-                Q(description__icontains=search) |
-                Q(tags__name__icontains=search)
-            ).distinct()
+                Q(description__icontains=search)
+            )
+            # Include tag search only if table exists
+            if tags_available:
+                search_q |= Q(tags__name__icontains=search)
+            queryset = queryset.filter(search_q).distinct()
         
         if vendor:
             queryset = queryset.filter(vendor=vendor)
@@ -55,8 +80,8 @@ class DeviceListView(LoginRequiredMixin, ListView):
         elif status == 'inactive':
             queryset = queryset.filter(is_active=False)
         
-        # Filter by tags (comma-separated tag names, OR logic)
-        if tags:
+        # Filter by tags (comma-separated tag names, OR logic) - only if table exists
+        if tags and tags_available:
             tag_names = [t.strip() for t in tags.split(',') if t.strip()]
             if tag_names:
                 queryset = queryset.filter(tags__name__in=tag_names).distinct()
@@ -78,10 +103,15 @@ class DeviceListView(LoginRequiredMixin, ListView):
         )
         # Add device groups
         context['groups'] = DeviceGroup.objects.all().order_by('name')
-        # Add all tags for filter autocomplete
-        context['all_tags'] = list(DeviceTag.objects.values('name', 'color').order_by('name'))
-        # Current tag filter
-        context['current_tags'] = self.request.GET.get('tags', '')
+        # Tags - only if table exists (graceful degradation before migrations)
+        tags_enabled = is_tags_table_available()
+        context['tags_enabled'] = tags_enabled
+        if tags_enabled:
+            context['all_tags'] = list(DeviceTag.objects.values('name', 'color').order_by('name'))
+            context['current_tags'] = self.request.GET.get('tags', '')
+        else:
+            context['all_tags'] = []
+            context['current_tags'] = ''
         return context
 
 
@@ -108,6 +138,9 @@ class DeviceDetailView(LoginRequiredMixin, DetailView):
             status='success'
         ).order_by('-created_at').first()
         
+        # Tags availability for conditional rendering
+        context['tags_enabled'] = is_tags_table_available()
+        
         return context
 
 
@@ -118,6 +151,11 @@ class DeviceCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
     form_class = DeviceForm
     template_name = 'inventory/device_form.html'
     success_url = reverse_lazy('inventory:device_list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['tags_enabled'] = is_tags_table_available()
+        return context
     
     def form_valid(self, form):
         form.instance.created_by = self.request.user
@@ -134,6 +172,11 @@ class DeviceUpdateView(LoginRequiredMixin, AdminRequiredMixin, UpdateView):
     
     def get_success_url(self):
         return reverse_lazy('inventory:device_detail', kwargs={'pk': self.object.pk})
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['tags_enabled'] = is_tags_table_available()
+        return context
     
     def form_valid(self, form):
         messages.success(self.request, f'Device "{form.instance.name}" updated successfully.')
@@ -180,11 +223,12 @@ class DeviceCopyView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
                 'is_active': source_device.is_active,
                 'group': source_device.group,
             })
-            # Copy tags as JSON for Tagify
-            import json
-            existing_tags = list(source_device.tags.values('name', 'color'))
-            tagify_data = [{'value': t['name'], 'color': t['color']} for t in existing_tags]
-            initial['tags_input'] = json.dumps(tagify_data)
+            # Copy tags as JSON for Tagify (only if tags table exists)
+            if is_tags_table_available():
+                import json
+                existing_tags = list(source_device.tags.values('name', 'color'))
+                tagify_data = [{'value': t['name'], 'color': t['color']} for t in existing_tags]
+                initial['tags_input'] = json.dumps(tagify_data)
         except Device.DoesNotExist:
             pass
         
@@ -192,6 +236,7 @@ class DeviceCopyView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['tags_enabled'] = is_tags_table_available()
         source_pk = self.kwargs.get('pk')
         try:
             source_device = Device.objects.get(pk=source_pk)
@@ -254,6 +299,10 @@ class TagAutocompleteView(LoginRequiredMixin, View):
     """
     
     def get(self, request):
+        # Return empty list if tags table doesn't exist yet
+        if not is_tags_table_available():
+            return JsonResponse([], safe=False)
+        
         query = request.GET.get('q', '').strip()
         
         tags = DeviceTag.objects.all()

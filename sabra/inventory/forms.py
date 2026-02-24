@@ -1,7 +1,24 @@
 from django import forms
+from django.db import connection
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Fieldset, HTML, Div
 from .models import Device, CredentialProfile, DeviceGroup, Vendor, DeviceTag
+
+
+def is_tags_table_available():
+    """
+    Check if the DeviceTag table exists in the database.
+    Used to gracefully degrade when migrations haven't been applied.
+    """
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT 1 FROM information_schema.tables WHERE table_name = %s",
+                ['inventory_devicetag']
+            )
+            return cursor.fetchone() is not None
+    except Exception:
+        return False
 
 
 class DeviceForm(forms.ModelForm):
@@ -37,15 +54,42 @@ class DeviceForm(forms.ModelForm):
         # Ensure group queryset is ordered
         self.fields['group'].queryset = DeviceGroup.objects.all().order_by('name')
         
-        # Pre-populate tags_input with existing tags for editing
-        if self.instance.pk:
+        # Pre-populate tags_input with existing tags for editing (only if table exists)
+        if self.instance.pk and is_tags_table_available():
             import json
-            existing_tags = list(self.instance.tags.values('name', 'color'))
-            # Format for Tagify: [{"value": "tag1", "color": "#xxx"}, ...]
-            tagify_data = [{'value': t['name'], 'color': t['color']} for t in existing_tags]
-            self.initial['tags_input'] = json.dumps(tagify_data)
+            try:
+                existing_tags = list(self.instance.tags.values('name', 'color'))
+                # Format for Tagify: [{"value": "tag1", "color": "#xxx"}, ...]
+                tagify_data = [{'value': t['name'], 'color': t['color']} for t in existing_tags]
+                self.initial['tags_input'] = json.dumps(tagify_data)
+            except Exception:
+                pass  # Table doesn't exist yet
         
         self.helper = FormHelper()
+        
+        # Build organization fieldset - conditionally include tags
+        tags_available = is_tags_table_available()
+        if tags_available:
+            organization_fieldset = Fieldset(
+                'Organization',
+                Row(
+                    Column('group', css_class='col-md-6'),
+                    Column(
+                        HTML('''
+                        <label class="form-label">Tags</label>
+                        <input type="text" id="tags-tagify" class="form-control" placeholder="Type to add tags...">
+                        '''),
+                        css_class='col-md-6'
+                    ),
+                ),
+                'tags_input',
+            )
+        else:
+            organization_fieldset = Fieldset(
+                'Organization',
+                'group',
+            )
+        
         self.helper.layout = Layout(
             Fieldset(
                 'Basic Information',
@@ -70,20 +114,7 @@ class DeviceForm(forms.ModelForm):
                     Column('credential_profile', css_class='col-md-4'),
                 ),
             ),
-            Fieldset(
-                'Organization',
-                Row(
-                    Column('group', css_class='col-md-6'),
-                    Column(
-                        HTML('''
-                        <label class="form-label">Tags</label>
-                        <input type="text" id="tags-tagify" class="form-control" placeholder="Type to add tags...">
-                        '''),
-                        css_class='col-md-6'
-                    ),
-                ),
-                'tags_input',
-            ),
+            organization_fieldset,
             Fieldset(
                 'Status',
                 'is_active',
@@ -102,30 +133,31 @@ class DeviceForm(forms.ModelForm):
         if commit:
             instance.save()
             
-            # Process tags from Tagify input
-            tags_data = self.cleaned_data.get('tags_input', '[]')
-            try:
-                tags_list = json.loads(tags_data) if tags_data else []
-            except json.JSONDecodeError:
-                tags_list = []
-            
-            # Clear existing tags and add new ones
-            instance.tags.clear()
-            
-            for tag_item in tags_list:
-                # Tagify sends either {"value": "name"} or just "name" string
-                if isinstance(tag_item, dict):
-                    tag_name = tag_item.get('value', '').strip()
-                else:
-                    tag_name = str(tag_item).strip()
+            # Process tags from Tagify input (only if table exists)
+            if is_tags_table_available():
+                tags_data = self.cleaned_data.get('tags_input', '[]')
+                try:
+                    tags_list = json.loads(tags_data) if tags_data else []
+                except json.JSONDecodeError:
+                    tags_list = []
                 
-                if tag_name:
-                    # Get or create the tag
-                    tag, created = DeviceTag.objects.get_or_create(
-                        name__iexact=tag_name,
-                        defaults={'name': tag_name}
-                    )
-                    instance.tags.add(tag)
+                # Clear existing tags and add new ones
+                instance.tags.clear()
+                
+                for tag_item in tags_list:
+                    # Tagify sends either {"value": "name"} or just "name" string
+                    if isinstance(tag_item, dict):
+                        tag_name = tag_item.get('value', '').strip()
+                    else:
+                        tag_name = str(tag_item).strip()
+                    
+                    if tag_name:
+                        # Get or create the tag
+                        tag, created = DeviceTag.objects.get_or_create(
+                            name__iexact=tag_name,
+                            defaults={'name': tag_name}
+                        )
+                        instance.tags.add(tag)
             
             self._save_m2m()
         
