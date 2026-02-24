@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Backup Summary Report - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Backup Summary Report</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'reports:dashboard' %}">Reports</a></li>
+                <li class="breadcrumb-item active">Backup Summary</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<!-- Date Range Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Start Date</label>
+                <input type="date" class="form-control" name="start" value="{{ start_date }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">End Date</label>
+                <input type="date" class="form-control" name="end" value="{{ end_date }}">
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">Update Report</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card primary">
+            <div class="card-body">
+                <div class="stat-value">{{ summary.total_backups }}</div>
+                <div class="stat-label">Total Backups</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card success">
+            <div class="card-body">
+                <div class="stat-value text-success">{{ summary.success_rate }}%</div>
+                <div class="stat-label">Success Rate</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card warning">
+            <div class="card-body">
+                <div class="stat-value text-warning">{{ summary.config_changes }}</div>
+                <div class="stat-label">Config Changes</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card info">
+            <div class="card-body">
+                <div class="stat-value">{{ summary.storage_used|filesizeformat }}</div>
+                <div class="stat-label">Storage Used</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- By Vendor -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Backups by Vendor</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Vendor</th>
+                            <th>Devices</th>
+                            <th>Backups</th>
+                            <th>Success</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in by_vendor %}
+                        <tr>
+                            <td>{{ item.vendor }}</td>
+                            <td>{{ item.devices }}</td>
+                            <td>{{ item.backups }}</td>
+                            <td>
+                                <span class="badge bg-{% if item.rate >= 90 %}success{% elif item.rate >= 70 %}warning{% else %}danger{% endif %}">
+                                    {{ item.rate }}%
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- By Job -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Backups by Job</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Job</th>
+                            <th>Executions</th>
+                            <th>Success</th>
+                            <th>Failed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in by_job %}
+                        <tr>
+                            <td><a href="{% url 'backups:job_detail' item.pk %}">{{ item.name }}</a></td>
+                            <td>{{ item.executions }}</td>
+                            <td class="text-success">{{ item.success }}</td>
+                            <td class="text-danger">{{ item.failed }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+
+{% block title %}Config Diff - {{ snapshot.device.name }} - Sabra Device Backup{% endblock %}
+
+{% block extra_css %}
+<style>
+    .diff-table {
+        font-family: 'SFMono-Regular', Consolas, monospace;
+        font-size: 0.8rem;
+        line-height: 1.4;
+    }
+    .diff-table td {
+        padding: 0 8px;
+        white-space: pre-wrap;
+        word-break: break-all;
+        vertical-align: top;
+    }
+    .diff-line-num {
+        width: 50px;
+        text-align: right;
+        color: #6c757d;
+        background: #f1f3f5;
+        user-select: none;
+    }
+    .diff-add {
+        background-color: #d4edda;
+    }
+    .diff-add td:not(.diff-line-num) {
+        background-color: #d4edda;
+    }
+    .diff-remove {
+        background-color: #f8d7da;
+    }
+    .diff-remove td:not(.diff-line-num) {
+        background-color: #f8d7da;
+    }
+    .diff-context td {
+        background-color: #fff;
+    }
+    .diff-header {
+        background-color: #e9ecef;
+        font-weight: bold;
+    }
+    
+    /* Dark mode diff styles */
+    [data-bs-theme="dark"] .diff-table {
+        color: #e9ecef;
+    }
+    [data-bs-theme="dark"] .diff-line-num {
+        background: #2b3035;
+        color: #8b949e;
+        border-right: 1px solid #343a40;
+    }
+    [data-bs-theme="dark"] .diff-add {
+        background-color: rgba(46, 160, 67, 0.15);
+    }
+    [data-bs-theme="dark"] .diff-add td:not(.diff-line-num) {
+        background-color: rgba(46, 160, 67, 0.15);
+        color: #7ee787;
+    }
+    [data-bs-theme="dark"] .diff-remove {
+        background-color: rgba(248, 81, 73, 0.15);
+    }
+    [data-bs-theme="dark"] .diff-remove td:not(.diff-line-num) {
+        background-color: rgba(248, 81, 73, 0.15);
+        color: #f85149;
+    }
+    [data-bs-theme="dark"] .diff-context td {
+        background-color: #212529;
+        color: #e9ecef;
+    }
+    [data-bs-theme="dark"] .diff-header {
+        background-color: #2b3035;
+        color: #adb5bd;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Configuration Diff</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'backups:snapshot_list' %}">Snapshots</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'backups:snapshot_view' snapshot.pk %}">{{ snapshot.device.name }}</a></li>
+                <li class="breadcrumb-item active">Diff</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'backups:snapshot_view' snapshot.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-file-code me-1"></i> View Full Config
+        </a>
+        <a href="{% url 'backups:snapshot_download' snapshot.pk %}" class="btn btn-primary">
+            <i class="bi bi-download me-1"></i> Download
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Comparison</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong class="text-danger">Previous</strong>
+                    <br>
+                    <small class="text-muted">{{ prev_snapshot.created_at|sabra_datetime }}</small>
+                </div>
+                <div class="mb-0">
+                    <strong class="text-success">Current</strong>
+                    <br>
+                    <small class="text-muted">{{ snapshot.created_at|sabra_datetime }}</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="stat-value text-success">{{ lines_added }}</div>
+                        <div class="stat-label">Added</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-value text-danger">{{ lines_removed }}</div>
+                        <div class="stat-label">Removed</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Legend</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-success me-2">&nbsp;&nbsp;&nbsp;</span>
+                    Added lines
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-danger me-2">&nbsp;&nbsp;&nbsp;</span>
+                    Removed lines
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-9">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Diff</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm diff-table mb-0">
+                        <tbody>
+                            {% for line in diff_lines %}
+                            <tr class="{% if line.type == 'add' %}diff-add{% elif line.type == 'remove' %}diff-remove{% elif line.type == 'header' %}diff-header{% else %}diff-context{% endif %}">
+                                <td class="diff-line-num">{{ line.old_num|default:"" }}</td>
+                                <td class="diff-line-num">{{ line.new_num|default:"" }}</td>
+                                <td>{{ line.content }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center py-4 text-muted">
+                                    No differences found
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

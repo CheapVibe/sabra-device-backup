@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ device.name }} - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>{{ device.name }}</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:device_list' %}">Devices</a></li>
+                <li class="breadcrumb-item active">{{ device.name }}</li>
+            </ol>
+        </nav>
+    </div>
+    <div class="d-flex gap-2">
+        {% if latest_snapshot %}
+        <a href="{% url 'backups:snapshot_view' latest_snapshot.pk %}" class="btn btn-outline-secondary" title="View latest config">
+            <i class="bi bi-file-code me-1"></i> View Config
+        </a>
+        {% endif %}
+        <a href="{% url 'backups:additional_output_latest' device.pk %}" class="btn btn-outline-info" title="View additional show command outputs">
+            <i class="bi bi-terminal me-1"></i> Additional Commands
+        </a>
+        <a href="{% url 'inventory:device_edit' device.pk %}" class="btn btn-primary">
+            <i class="bi bi-pencil me-1"></i> Edit
+        </a>
+        <a href="{% url 'inventory:device_copy' device.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-copy me-1"></i> Copy
+        </a>
+        <form action="{% url 'backups:device_backup' device.pk %}" method="post" class="d-inline ms-3">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-cloud-download me-1"></i> Backup Now
+            </button>
+        </form>
+        <a href="{% url 'inventory:device_delete' device.pk %}" class="btn btn-danger ms-3">
+            <i class="bi bi-trash me-1"></i> Delete
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Device Info -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Device Information</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">
+                        {% if device.is_active %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-4">Hostname</dt>
+                    <dd class="col-sm-8"><code>{{ device.hostname }}</code></dd>
+                    
+                    <dt class="col-sm-4">Vendor</dt>
+                    <dd class="col-sm-8">{{ device.get_vendor_display }}</dd>
+                    
+                    <dt class="col-sm-4">Platform</dt>
+                    <dd class="col-sm-8">{{ device.platform|default:"-" }}</dd>
+                    
+                    <dt class="col-sm-4">Protocol</dt>
+                    <dd class="col-sm-8">{{ device.get_protocol_display }} (port {{ device.port }})</dd>
+                    
+                    <dt class="col-sm-4">Credentials</dt>
+                    <dd class="col-sm-8">
+                        {% if device.credential_profile %}
+                        <a href="{% url 'inventory:credential_detail' device.credential_profile.pk %}">
+                            {{ device.credential_profile.name }}
+                        </a>
+                        {% else %}
+                        <span class="text-muted">Not configured</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+        
+        <!-- Group -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Group</h5>
+            </div>
+            <div class="card-body">
+                {% if device.group %}
+                <span class="badge me-1 mb-1" style="background-color: {{ device.group.color }}">{{ device.group.name }}</span>
+                {% else %}
+                <span class="text-muted">No group assigned</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Backup Status -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Backup Status</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Last Backup</dt>
+                    <dd class="col-sm-7">
+                        {% if device.last_backup_at %}
+                        {{ device.last_backup_at|timesince }} ago
+                        {% else %}
+                        <span class="text-muted">Never</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-5">Status</dt>
+                    <dd class="col-sm-7">
+                        {% if device.last_backup_status == 'success' %}
+                        <span class="badge bg-success">Success</span>
+                        {% elif device.last_backup_status == 'failed' or device.last_backup_status == 'auth_error' or device.last_backup_status == 'timeout' or device.last_backup_status == 'connection_error' or device.last_backup_status == 'enable_mode_failed' %}
+                        <span class="badge bg-danger">Failed</span>
+                        {% elif device.last_backup_status == 'changed' %}
+                        <span class="badge bg-warning text-dark">Changed</span>
+                        {% elif device.last_backup_status == 'new' %}
+                        <span class="badge bg-purple">New</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Unknown</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-5">Total Snapshots</dt>
+                    <dd class="col-sm-7">{{ snapshot_count }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Snapshots -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Recent Configuration Snapshots</h5>
+                <a href="{% url 'backups:snapshot_list' %}?device={{ device.pk }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Status</th>
+                                <th>Size</th>
+                                <th>Changed</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for snapshot in recent_snapshots %}
+                            <tr>
+                                <td>{{ snapshot.created_at|sabra_datetime }}</td>
+                                <td>
+                                    {% if snapshot.status == 'success' %}
+                                    <span class="badge bg-success">Success</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Failed</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ snapshot.config_size|filesizeformat }}</td>
+                                <td>
+                                    {% if snapshot.has_changed %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>Changed
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">No change</span>
+                                    {% endif %}
+                                </td>
+                                <td class="action-buttons">
+                                    <a href="{% url 'backups:snapshot_view' snapshot.pk %}" class="btn btn-sm btn-outline-secondary" title="View Config">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'backups:additional_output_latest' device.pk %}" class="btn btn-sm btn-outline-info" title="Additional Commands">
+                                        <i class="bi bi-terminal"></i>
+                                    </a>
+                                    {% if snapshot.has_changed %}
+                                    <a href="{% url 'backups:snapshot_diff' snapshot.pk %}" class="btn btn-sm btn-outline-warning" title="View Diff">
+                                        <i class="bi bi-file-diff"></i>
+                                    </a>
+                                    {% endif %}
+                                    <a href="{% url 'backups:snapshot_download' snapshot.pk %}" class="btn btn-sm btn-outline-primary" title="Download">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    No snapshots yet. 
+                                    <form action="{% url 'backups:device_backup' device.pk %}" method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-link p-0">Run a backup</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Notes -->
+        {% if device.notes %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Notes</h5>
+            </div>
+            <div class="card-body">
+                {{ device.notes|linebreaks }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

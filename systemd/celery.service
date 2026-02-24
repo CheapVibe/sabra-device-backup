@@ -1,0 +1,52 @@
+[Unit]
+Description=Sabra Device Backup - Celery Worker
+After=network.target redis.service sabra.service
+Requires=redis.service
+Wants=sabra.service
+
+[Service]
+Type=forking
+User=sabra
+Group=sabra
+WorkingDirectory=/opt/sabra
+Environment="PATH=/opt/sabra/venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=/opt/sabra/.env
+EnvironmentFile=/etc/sabra/environment
+ExecStart=/opt/sabra/venv/bin/celery \
+    -A sabra.celery \
+    multi start worker \
+    --pidfile=/run/sabra/celery-%n.pid \
+    --logfile=/var/log/sabra/celery-%n.log \
+    --loglevel=INFO \
+    --concurrency=4 \
+    --max-tasks-per-child=100
+ExecStop=/opt/sabra/venv/bin/celery \
+    -A sabra.celery \
+    multi stopwait worker \
+    --pidfile=/run/sabra/celery-%n.pid
+ExecReload=/opt/sabra/venv/bin/celery \
+    -A sabra.celery \
+    multi restart worker \
+    --pidfile=/run/sabra/celery-%n.pid \
+    --logfile=/var/log/sabra/celery-%n.log \
+    --loglevel=INFO \
+    --concurrency=4
+# RuntimeDirectory managed by sabra.service - do not duplicate here
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/sabra /var/log/sabra /run/sabra
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

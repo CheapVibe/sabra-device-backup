@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Backup Failures - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Backup Failures</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'reports:dashboard' %}">Reports</a></li>
+                <li class="breadcrumb-item active">Failures</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <div class="btn-group">
+            <a href="?days=1" class="btn btn-outline-secondary {% if days == 1 %}active{% endif %}">24h</a>
+            <a href="?days=7" class="btn btn-outline-secondary {% if days == 7 %}active{% endif %}">7d</a>
+            <a href="?days=30" class="btn btn-outline-secondary {% if days == 30 %}active{% endif %}">30d</a>
+            <a href="?days=90" class="btn btn-outline-secondary {% if days == 90 %}active{% endif %}">90d</a>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body text-center">
+                <h2 class="mb-0">{{ total_failures }}</h2>
+                <p class="mb-0">Failures</p>
+            </div>
+        </div>
+        
+        {% if by_error_type %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">By Error Type</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for item in by_error_type %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ item.status|title }}
+                    <span class="badge bg-danger">{{ item.count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if problem_devices %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Problem Devices</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for item in problem_devices %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>{{ item.device__name }}</strong>
+                        <br>
+                        <small class="text-muted">{{ item.device__hostname }}</small>
+                    </div>
+                    <span class="badge bg-danger">{{ item.failures }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-lg-9">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    Failures: {{ start_date|sabra_compact_date }} - {{ end_date|sabra_date }}
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Device</th>
+                                <th>Hostname</th>
+                                <th>Error</th>
+                                <th>Timestamp</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for snapshot in failures %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'inventory:device_detail' snapshot.device.pk %}">
+                                        {{ snapshot.device.name }}
+                                    </a>
+                                </td>
+                                <td><code>{{ snapshot.device.hostname }}</code></td>
+                                <td>
+                                    <span class="badge bg-danger">{{ snapshot.get_status_display }}</span>
+                                    {% if snapshot.error_message %}
+                                    <br>
+                                    <small class="text-muted">{{ snapshot.error_message|truncatewords:10 }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>{{ snapshot.created_at|sabra_datetime_short }}</td>
+                                <td>
+                                    <a href="{% url 'inventory:device_edit' snapshot.device.pk %}" class="btn btn-sm btn-outline-primary" title="Edit Device">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    No failures in this period. Great!
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

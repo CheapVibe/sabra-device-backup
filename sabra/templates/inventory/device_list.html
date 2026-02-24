@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+
+{% block title %}Devices - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Devices</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Devices</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'inventory:device_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Add Device
+        </a>
+        <div class="btn-group ms-2">
+            <a href="{% url 'app_export_download' 'devices' %}" class="btn btn-outline-primary">
+                <i class="bi bi-download"></i> Export CSV
+            </a>
+            <a href="{% url 'app_import' %}" class="btn btn-outline-primary">
+                <i class="bi bi-upload"></i> Import
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Search</label>
+                <input type="text" class="form-control" name="q" value="{{ request.GET.q }}" placeholder="Device name or hostname">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Vendor</label>
+                <select class="form-select" name="vendor">
+                    <option value="">All Vendors</option>
+                    {% for value, label in vendor_choices %}
+                    <option value="{{ value }}" {% if request.GET.vendor == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Group</label>
+                <select class="form-select" name="group">
+                    <option value="">All Groups</option>
+                    {% for group in groups %}
+                    <option value="{{ group.pk }}" {% if request.GET.group == group.pk|stringformat:"d" %}selected{% endif %}>{{ group.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status">
+                    <option value="">All</option>
+                    <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-search me-1"></i> Filter
+                </button>
+                <a href="{% url 'inventory:device_list' %}" class="btn btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Hostname</th>
+                        <th>Vendor</th>
+                        <th>Groups</th>
+                        <th>Last Backup</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for device in devices %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'inventory:device_detail' device.pk %}">
+                                <strong>{{ device.name }}</strong>
+                            </a>
+                            {% if not device.is_active %}
+                            <span class="badge bg-secondary ms-1">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td><code>{{ device.hostname }}</code></td>
+                        <td>
+                            <span class="badge bg-light text-dark">{{ device.get_vendor_display }}</span>
+                        </td>
+                        <td>
+                            {% if device.group %}
+                            <span class="badge" style="background-color: {{ device.group.color }}">{{ device.group.name }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if device.last_backup_at %}
+                            {{ device.last_backup_at|timesince }} ago
+                            {% else %}
+                            <span class="text-muted">Never</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if device.last_backup_status == 'success' %}
+                            <span class="badge bg-success">OK</span>
+                            {% elif device.last_backup_status == 'failed' or device.last_backup_status == 'auth_error' or device.last_backup_status == 'timeout' or device.last_backup_status == 'connection_error' or device.last_backup_status == 'enable_mode_failed' %}
+                            <span class="badge bg-danger">Failed</span>
+                            {% elif device.last_backup_status == 'changed' %}
+                            <span class="badge bg-warning text-dark">Changed</span>
+                            {% elif device.last_backup_status == 'new' %}
+                            <span class="badge bg-purple">New</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Unknown</span>
+                            {% endif %}
+                        </td>
+                        <td class="action-buttons">
+                            <a href="{% url 'inventory:device_detail' device.pk %}" class="btn btn-sm btn-outline-secondary" title="View Details">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{% url 'backups:additional_output_latest' device.pk %}" class="btn btn-sm btn-outline-info" title="View Additional Commands">
+                                <i class="bi bi-terminal"></i>
+                            </a>
+                            <a href="{% url 'inventory:device_edit' device.pk %}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'inventory:device_copy' device.pk %}" class="btn btn-sm btn-outline-secondary" title="Copy Device">
+                                <i class="bi bi-copy"></i>
+                            </a>
+                            <form action="{% url 'backups:device_backup' device.pk %}" method="post" class="d-inline ms-3">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-success" title="Backup Now">
+                                    <i class="bi bi-cloud-download"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <i class="bi bi-hdd-rack"></i>
+                                <h5>No devices found</h5>
+                                <p class="text-muted">Add your first network device to start backing up configurations.</p>
+                                <a href="{% url 'inventory:device_create' %}" class="btn btn-primary">
+                                    <i class="bi bi-plus-lg me-1"></i> Add Device
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-4" aria-label="Page navigation">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+        </li>
+        {% endif %}
+        
+        {% for num in page_obj.paginator.page_range %}
+        <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+        </li>
+        {% endfor %}
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}Backup Jobs - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Backup Jobs</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Backup Jobs</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'backups:job_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Create Job
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Job Name</th>
+                        <th>Schedule</th>
+                        <th>Devices</th>
+                        <th>Last Run</th>
+                        <th>Next Run</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in jobs %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'backups:job_detail' job.pk %}">
+                                <strong>{{ job.name }}</strong>
+                            </a>
+                        </td>
+                        <td><code>{{ job.schedule_cron|default:"Manual" }}</code></td>
+                        <td>{{ job.device_count }} devices</td>
+                        <td>
+                            {% if job.last_run_at %}
+                            {{ job.last_run_at|timesince }} ago
+                            {% else %}
+                            <span class="text-muted">Never</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if job.next_run_at %}
+                            {{ job.next_run_at|sabra_compact }}
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if job.is_enabled %}
+                            <span class="badge bg-success">Enabled</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Disabled</span>
+                            {% endif %}
+                        </td>
+                        <td class="action-buttons">
+                            <form action="{% url 'backups:job_run' job.pk %}" method="post" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-success" title="Run Now">
+                                    <i class="bi bi-play-fill"></i>
+                                </button>
+                            </form>
+                            <a href="{% url 'backups:job_copy' job.pk %}" class="btn btn-sm btn-outline-secondary" title="Copy">
+                                <i class="bi bi-copy"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <i class="bi bi-calendar-check"></i>
+                                <h5>No backup jobs configured</h5>
+                                <p class="text-muted">Create a backup job to schedule automated configuration backups.</p>
+                                <a href="{% url 'backups:job_create' %}" class="btn btn-primary">
+                                    <i class="bi bi-plus-lg me-1"></i> Create First Job
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

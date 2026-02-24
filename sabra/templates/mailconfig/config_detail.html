@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ config.name }} - Mail Configuration{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>{{ config.name }}</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'mailconfig:config_list' %}">Mail Configuration</a></li>
+                <li class="breadcrumb-item active">{{ config.name }}</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <form action="{% url 'mailconfig:config_test' config.pk %}" method="post" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-play-circle me-1"></i> Test Connection
+            </button>
+        </form>
+        <a href="{% url 'mailconfig:config_edit' config.pk %}" class="btn btn-primary">
+            <i class="bi bi-pencil me-1"></i> Edit
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Configuration Details</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">
+                        {% if config.is_active %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-4">Server</dt>
+                    <dd class="col-sm-8"><code>{{ config.host }}</code></dd>
+                    
+                    <dt class="col-sm-4">Port</dt>
+                    <dd class="col-sm-8">{{ config.port }}</dd>
+                    
+                    <dt class="col-sm-4">Security</dt>
+                    <dd class="col-sm-8">
+                        {% if config.use_tls %}
+                        <span class="badge bg-primary">STARTTLS</span>
+                        {% elif config.use_ssl %}
+                        <span class="badge bg-info">SSL/TLS</span>
+                        {% else %}
+                        <span class="badge bg-warning">None</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-4">Username</dt>
+                    <dd class="col-sm-8"><code>{{ config.username }}</code></dd>
+                    
+                    <dt class="col-sm-4">From Email</dt>
+                    <dd class="col-sm-8">{{ config.from_name }} &lt;{{ config.from_email }}&gt;</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Test Status</h5>
+            </div>
+            <div class="card-body">
+                {% if config.last_tested_at %}
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Last Test</dt>
+                    <dd class="col-sm-8">{{ config.last_tested_at|timesince }} ago</dd>
+                    
+                    <dt class="col-sm-4">Result</dt>
+                    <dd class="col-sm-8">
+                        {% if config.last_test_success %}
+                        <span class="badge bg-success">Passed</span>
+                        {% else %}
+                        <span class="badge bg-danger">Failed</span>
+                        {% endif %}
+                    </dd>
+                    
+                    {% if config.last_test_error %}
+                    <dt class="col-sm-4">Error</dt>
+                    <dd class="col-sm-8 text-danger">{{ config.last_test_error }}</dd>
+                    {% endif %}
+                </dl>
+                {% else %}
+                <p class="text-muted mb-0">Connection has not been tested yet.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Metadata</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Created</dt>
+                    <dd class="col-sm-8">{{ config.created_at|sabra_datetime_short }}</dd>
+                    
+                    <dt class="col-sm-4">Created By</dt>
+                    <dd class="col-sm-8">{{ config.created_by.username|default:"-" }}</dd>
+                    
+                    <dt class="col-sm-4">Updated</dt>
+                    <dd class="col-sm-8">{{ config.updated_at|sabra_datetime_short }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

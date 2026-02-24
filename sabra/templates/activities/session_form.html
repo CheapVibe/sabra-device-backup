@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}New CLI Session - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>New Activity Session</h1>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'activities:session_list' %}">CLI Sessions</a></li>
+            <li class="breadcrumb-item active">New Session</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {% crispy form %}
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-exclamation-triangle text-warning me-2"></i>
+                    Read-Only Commands
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    Activity sessions are for <strong>read-only information gathering</strong> only.
+                    Commands that modify device configuration are not supported.
+                </p>
+                <h6>Example Commands</h6>
+                <ul class="text-muted small mb-0">
+                    <li><code>show version</code></li>
+                    <li><code>show interfaces</code></li>
+                    <li><code>show ip route</code></li>
+                    <li><code>show running-config | include hostname</code></li>
+                </ul>
+            </div>
+        </div>
+        
+        {% if templates %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Saved Templates</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for tpl in templates %}
+                    <a href="{% url 'activities:run_command' %}?template={{ tpl.pk }}" 
+                       class="list-group-item list-group-item-action">
+                        <strong>{{ tpl.name }}</strong>
+                        <br>
+                        <small class="text-muted">{{ tpl.command|truncatechars:50 }}</small>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

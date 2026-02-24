@@ -1,0 +1,457 @@
+{% extends 'base.html' %}
+
+{% block title %}System Backup - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-shield-check me-2"></i>System Backup</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active">System Backup</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'app_export' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-table me-1"></i> CSV Import/Export
+        </a>
+    </div>
+</div>
+
+<!-- System Overview Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3 col-lg-2">
+        <div class="card border-0 bg-primary text-white h-100">
+            <div class="card-body text-center py-3">
+                <i class="bi bi-hdd-network fs-2 mb-1 d-block opacity-75"></i>
+                <h3 class="mb-0">{{ counts.devices }}</h3>
+                <small class="opacity-75">Devices</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3 col-lg-2">
+        <div class="card border-0 bg-success text-white h-100">
+            <div class="card-body text-center py-3">
+                <i class="bi bi-key fs-2 mb-1 d-block opacity-75"></i>
+                <h3 class="mb-0">{{ counts.credential_profiles }}</h3>
+                <small class="opacity-75">Credentials</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3 col-lg-2">
+        <div class="card border-0 bg-info text-white h-100">
+            <div class="card-body text-center py-3">
+                <i class="bi bi-collection fs-2 mb-1 d-block opacity-75"></i>
+                <h3 class="mb-0">{{ counts.device_groups }}</h3>
+                <small class="opacity-75">Groups</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3 col-lg-2">
+        <div class="card border-0 bg-warning text-dark h-100">
+            <div class="card-body text-center py-3">
+                <i class="bi bi-calendar-check fs-2 mb-1 d-block opacity-75"></i>
+                <h3 class="mb-0">{{ counts.backup_jobs }}</h3>
+                <small class="opacity-75">Jobs</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3 col-lg-2">
+        <div class="card border-0 bg-secondary text-white h-100">
+            <div class="card-body text-center py-3">
+                <i class="bi bi-cpu fs-2 mb-1 d-block opacity-75"></i>
+                <h3 class="mb-0">{{ counts.vendors }}</h3>
+                <small class="opacity-75">Vendors</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3 col-lg-2">
+        <div class="card border-0 bg-dark text-white h-100">
+            <div class="card-body text-center py-3">
+                <i class="bi bi-file-earmark-code fs-2 mb-1 d-block opacity-75"></i>
+                <h3 class="mb-0">{{ counts.config_snapshots }}</h3>
+                <small class="opacity-75">Snapshots</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Create Backup Section -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-primary text-white py-3">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-cloud-arrow-down me-2"></i>Create Encrypted Backup
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'system_backup:create' %}" id="createBackupForm">
+                    {% csrf_token %}
+                    
+                    <!-- Backup Name -->
+                    <div class="mb-3">
+                        <label for="backup_name" class="form-label">Backup Name <span class="text-muted small">(optional)</span></label>
+                        <input type="text" class="form-control" id="backup_name" name="backup_name" 
+                               placeholder="e.g., pre-upgrade, weekly" maxlength="50">
+                    </div>
+                    
+                    <!-- Component Selection -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Select Components</label>
+                        
+                        <div class="border rounded p-3 bg-light">
+                            <!-- Inventory Section -->
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2"><i class="bi bi-server me-1"></i> Inventory</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input component-check" type="checkbox" id="include_devices" name="include_devices" checked data-deps="include_credentials,include_groups">
+                                            <label class="form-check-label" for="include_devices">
+                                                Devices <span class="badge bg-primary">{{ counts.devices }}</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input component-check" type="checkbox" id="include_credentials" name="include_credentials" checked>
+                                            <label class="form-check-label" for="include_credentials">
+                                                Credentials <span class="badge bg-success">{{ counts.credential_profiles }}</span>
+                                                <i class="bi bi-lock-fill text-success ms-1" title="Including passwords"></i>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input component-check" type="checkbox" id="include_groups" name="include_groups" checked>
+                                            <label class="form-check-label" for="include_groups">
+                                                Device Groups <span class="badge bg-info">{{ counts.device_groups }}</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input component-check" type="checkbox" id="include_vendors" name="include_vendors" checked>
+                                            <label class="form-check-label" for="include_vendors">
+                                                Vendors <span class="badge bg-secondary">{{ counts.vendors }}</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Backup System Section -->
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2"><i class="bi bi-clock-history me-1"></i> Backup System</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input component-check" type="checkbox" id="include_jobs" name="include_jobs" checked>
+                                            <label class="form-check-label" for="include_jobs">
+                                                Backup Jobs <span class="badge bg-warning text-dark">{{ counts.backup_jobs }}</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input component-check" type="checkbox" id="include_job_history" name="include_job_history">
+                                            <label class="form-check-label" for="include_job_history">
+                                                Job History <span class="badge bg-dark">{{ counts.job_executions }}</span>
+                                                <small class="text-muted">(metadata)</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="form-check">
+                                            <input class="form-check-input component-check" type="checkbox" id="include_snapshots" name="include_snapshots">
+                                            <label class="form-check-label" for="include_snapshots">
+                                                Config Snapshots
+                                            </label>
+                                        </div>
+                                        <div class="ms-4 mt-2" id="snapshotDaysContainer" style="display: none;">
+                                            <label class="form-label small text-muted">Include snapshots from:</label>
+                                            <select class="form-select form-select-sm" name="snapshot_days" id="snapshot_days" style="max-width: 200px;">
+                                                <option value="7">Last 7 days ({{ snapshot_counts.7_days }} snapshots)</option>
+                                                <option value="14">Last 14 days ({{ snapshot_counts.14_days }} snapshots)</option>
+                                                <option value="30" selected>Last 30 days ({{ snapshot_counts.30_days }} snapshots)</option>
+                                                <option value="0">All snapshots ({{ snapshot_counts.all }} snapshots)</option>
+                                            </select>
+                                            <div class="form-text text-warning small mt-1">
+                                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                                Including snapshots can significantly increase backup size.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Settings Section -->
+                            <div>
+                                <h6 class="text-muted mb-2"><i class="bi bi-gear me-1"></i> System Settings</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input component-check" type="checkbox" id="include_mail_config" name="include_mail_config" checked>
+                                    <label class="form-check-label" for="include_mail_config">
+                                        Mail Configuration
+                                        {% if counts.mail_config %}
+                                        <span class="badge bg-success">Configured</span>
+                                        <i class="bi bi-lock-fill text-success ms-1" title="Including SMTP credentials"></i>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Not configured</span>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Encryption Passphrase -->
+                    <div class="mb-3">
+                        <label for="passphrase" class="form-label fw-semibold">
+                            <i class="bi bi-shield-lock me-1"></i>Encryption Passphrase <span class="text-danger">*</span>
+                        </label>
+                        <input type="password" class="form-control" id="passphrase" name="passphrase" 
+                               required minlength="8" autocomplete="new-password">
+                        <div class="form-text">Minimum 8 characters. You'll need this passphrase to restore.</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="passphrase_confirm" class="form-label">Confirm Passphrase <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="passphrase_confirm" name="passphrase_confirm" 
+                               required minlength="8" autocomplete="new-password">
+                    </div>
+                    
+                    <!-- Size Estimate -->
+                    <div class="alert alert-light border mb-3" id="sizeEstimate">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-info-circle text-info me-2 fs-5"></i>
+                            <div>
+                                <strong>Estimated size:</strong> <span id="estimatedSize">{{ size_estimate.compressed_human }}</span>
+                                <br>
+                                <small class="text-muted">Encrypted with AES-256-GCM</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-lg w-100" id="createBtn">
+                        <i class="bi bi-download me-2"></i>Create & Download Backup
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Restore Backup Section -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-success text-white py-3">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-cloud-arrow-up me-2"></i>Restore from Backup
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if has_pending_restore %}
+                <div class="alert alert-warning d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                    <div>
+                        <strong>Pending restore detected.</strong>
+                        <a href="{% url 'system_backup:preview' %}" class="alert-link">Continue restore</a> or 
+                        <a href="{% url 'system_backup:cancel' %}" class="alert-link">cancel</a>.
+                    </div>
+                </div>
+                {% endif %}
+                
+                <form method="post" action="{% url 'system_backup:upload' %}" enctype="multipart/form-data" id="uploadForm">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4">
+                        <label for="backup_file" class="form-label fw-semibold">Backup File</label>
+                        <div class="upload-zone p-4 border-2 border-dashed rounded text-center bg-light" id="uploadZone">
+                            <i class="bi bi-cloud-upload fs-1 text-muted mb-2"></i>
+                            <p class="mb-2">Drag and drop your backup file here, or</p>
+                            <label for="backup_file" class="btn btn-outline-primary">
+                                <i class="bi bi-folder2-open me-1"></i> Browse Files
+                            </label>
+                            <input type="file" class="d-none" id="backup_file" name="backup_file" 
+                                   accept=".sabra.enc" required>
+                            <p class="text-muted small mt-2 mb-0">Accepts .sabra.enc files</p>
+                        </div>
+                        <div id="selectedFile" class="mt-2 d-none">
+                            <div class="alert alert-info d-flex align-items-center py-2">
+                                <i class="bi bi-file-earmark-lock me-2"></i>
+                                <span id="selectedFileName"></span>
+                                <button type="button" class="btn-close ms-auto" onclick="clearFile()"></button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="restore_passphrase" class="form-label fw-semibold">
+                            <i class="bi bi-key me-1"></i>Decryption Passphrase <span class="text-danger">*</span>
+                        </label>
+                        <input type="password" class="form-control" id="restore_passphrase" name="passphrase" 
+                               required autocomplete="current-password">
+                        <div class="form-text">Enter the passphrase used when creating this backup.</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success btn-lg w-100" id="uploadBtn" disabled>
+                        <i class="bi bi-unlock me-2"></i>Decrypt & Preview
+                    </button>
+                </form>
+                
+                <hr class="my-4">
+                
+                <div class="bg-light rounded p-3">
+                    <h6 class="text-muted mb-3"><i class="bi bi-shield-check me-2"></i>About Encrypted Backups</h6>
+                    <ul class="small text-muted mb-0">
+                        <li class="mb-1">Backups are encrypted with AES-256-GCM using your passphrase</li>
+                        <li class="mb-1">Contains credentials, passwords, and SMTP settings in encrypted form</li>
+                        <li class="mb-1">Can be restored on any Sabra installation</li>
+                        <li class="mb-1">Preview changes before applying restore</li>
+                        <li>Choose exactly what components to restore</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.border-dashed {
+    border-style: dashed !important;
+}
+.upload-zone {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.upload-zone:hover, .upload-zone.dragover {
+    background-color: #e3f2fd !important;
+    border-color: #2196F3 !important;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle snapshot days toggle
+    const snapshotsCheck = document.getElementById('include_snapshots');
+    const snapshotDaysContainer = document.getElementById('snapshotDaysContainer');
+    
+    snapshotsCheck.addEventListener('change', function() {
+        snapshotDaysContainer.style.display = this.checked ? 'block' : 'none';
+    });
+    
+    // Handle device dependencies
+    const devicesCheck = document.getElementById('include_devices');
+    const credentialsCheck = document.getElementById('include_credentials');
+    const groupsCheck = document.getElementById('include_groups');
+    
+    devicesCheck.addEventListener('change', function() {
+        if (this.checked) {
+            credentialsCheck.checked = true;
+            groupsCheck.checked = true;
+            credentialsCheck.disabled = true;
+            groupsCheck.disabled = true;
+        } else {
+            credentialsCheck.disabled = false;
+            groupsCheck.disabled = false;
+        }
+    });
+    
+    // Initialize state
+    if (devicesCheck.checked) {
+        credentialsCheck.disabled = true;
+        groupsCheck.disabled = true;
+    }
+    
+    // Passphrase validation
+    const passphrase = document.getElementById('passphrase');
+    const passphraseConfirm = document.getElementById('passphrase_confirm');
+    const createBtn = document.getElementById('createBtn');
+    
+    function validatePassphrases() {
+        if (passphrase.value.length >= 8 && passphrase.value === passphraseConfirm.value) {
+            passphraseConfirm.classList.remove('is-invalid');
+            passphraseConfirm.classList.add('is-valid');
+        } else if (passphraseConfirm.value.length > 0) {
+            passphraseConfirm.classList.remove('is-valid');
+            passphraseConfirm.classList.add('is-invalid');
+        }
+    }
+    
+    passphrase.addEventListener('input', validatePassphrases);
+    passphraseConfirm.addEventListener('input', validatePassphrases);
+    
+    // File upload handling
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('backup_file');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const selectedFile = document.getElementById('selectedFile');
+    const selectedFileName = document.getElementById('selectedFileName');
+    
+    uploadZone.addEventListener('click', function(e) {
+        // Prevent double-open: label with for="backup_file" already triggers the input
+        if (e.target.tagName === 'LABEL' || e.target.closest('label')) {
+            return;
+        }
+        fileInput.click();
+    });
+    
+    uploadZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.classList.add('dragover');
+    });
+    
+    uploadZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+    });
+    
+    uploadZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            updateFileDisplay();
+        }
+    });
+    
+    fileInput.addEventListener('change', updateFileDisplay);
+    
+    function updateFileDisplay() {
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            selectedFileName.textContent = file.name + ' (' + formatSize(file.size) + ')';
+            selectedFile.classList.remove('d-none');
+            uploadZone.style.display = 'none';
+            uploadBtn.disabled = false;
+        }
+    }
+    
+    window.clearFile = function() {
+        fileInput.value = '';
+        selectedFile.classList.add('d-none');
+        uploadZone.style.display = 'block';
+        uploadBtn.disabled = true;
+    };
+    
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+    }
+    
+    // Form submission loading state
+    document.getElementById('createBackupForm').addEventListener('submit', function() {
+        createBtn.disabled = true;
+        createBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating backup...';
+    });
+    
+    document.getElementById('uploadForm').addEventListener('submit', function() {
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Decrypting...';
+    });
+});
+</script>
+{% endblock %}

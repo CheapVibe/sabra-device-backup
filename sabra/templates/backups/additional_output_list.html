@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block title %}Additional Command Outputs - {{ device.name }} - Sabra Device Backup{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>{{ device.name }} - Additional Command Outputs</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'inventory:device_detail' device.pk %}">{{ device.name }}</a></li>
+                <li class="breadcrumb-item active">Additional Commands</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="{% url 'inventory:device_detail' device.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Device
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Command Output History</h5>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Date/Time</th>
+                    <th>Status</th>
+                    <th>Commands</th>
+                    <th>Size</th>
+                    <th>Changed</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for output in outputs %}
+                <tr>
+                    <td>
+                        <a href="{% url 'backups:additional_output_view' output.pk %}">
+                            {{ output.created_at|sabra_datetime }}
+                        </a>
+                    </td>
+                    <td>
+                        {% if output.status == 'success' %}
+                        <span class="badge bg-success">Success</span>
+                        {% elif output.status == 'partial' %}
+                        <span class="badge bg-warning text-dark">Partial</span>
+                        {% else %}
+                        <span class="badge bg-danger">Failed</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ output.get_command_count }}</td>
+                    <td>{{ output.output_size|filesizeformat }}</td>
+                    <td>
+                        {% if output.has_changed %}
+                        <span class="badge bg-warning text-dark">Yes</span>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <a href="{% url 'backups:additional_output_view' output.pk %}" class="btn btn-outline-primary" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{% url 'backups:additional_output_download' output.pk %}" class="btn btn-outline-secondary" title="Download">
+                                <i class="bi bi-download"></i>
+                            </a>
+                            {% if output.has_changed and output.previous_output %}
+                            <a href="{% url 'backups:additional_output_diff' output.pk %}" class="btn btn-outline-warning" title="View Diff">
+                                <i class="bi bi-file-diff"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-5">
+                        <i class="bi bi-terminal fs-1 d-block mb-2"></i>
+                        No additional command outputs yet.<br>
+                        <small>Configure "Additional Show Commands" on the vendor profile to capture extra command outputs during backup.</small>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1">&laquo; First</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+        </li>
+        {% endif %}
+        
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}
