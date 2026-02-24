@@ -21,6 +21,7 @@ ntc-templates>=4.0.0
 # Security & Encryption
 django-fernet-fields-v2>=0.9
 cryptography>=41.0.0
+django-axes>=6.3.0  # Brute force protection
 
 # Forms & Validation
 django-crispy-forms>=2.1

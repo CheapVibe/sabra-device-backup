@@ -51,6 +51,9 @@ INSTALLED_APPS = [
     'sabra.activities',
     'sabra.reports',
     'sabra.mailconfig',
+    
+    # Security
+    'axes',  # Brute force protection
 ]
 
 MIDDLEWARE = [
@@ -61,6 +64,13 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'axes.middleware.AxesMiddleware',  # Must be after AuthenticationMiddleware
+]
+
+# Authentication backends (axes must be first)
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
 ]
 
 ROOT_URLCONF = 'sabra.urls'
@@ -177,6 +187,20 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# =============================================================================
+# Django-Axes: Brute Force Protection
+# =============================================================================
+# Protects against brute force login attacks by tracking failed attempts
+from datetime import timedelta
+
+AXES_FAILURE_LIMIT = 5  # Lock after 5 failed attempts
+AXES_COOLOFF_TIME = timedelta(minutes=30)  # Lockout duration
+AXES_LOCKOUT_PARAMETERS = ['username', 'ip_address']  # Track both
+AXES_RESET_ON_SUCCESS = True  # Reset counter on successful login
+AXES_ENABLE_ADMIN = True  # Show axes data in admin
+AXES_LOCKOUT_CALLABLE = None  # Use default lockout response
+AXES_VERBOSE = True  # Log lockouts
 
 # Fernet encryption keys for sensitive data
 # In production, this MUST be set via local.py with a unique key
