@@ -1,5 +1,4 @@
 """
-"""
 Sabra Device Backup - Base Django Settings
 
 This file contains shared configuration for all environments.
