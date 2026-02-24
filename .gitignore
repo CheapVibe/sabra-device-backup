@@ -40,6 +40,7 @@ env/
 # Django
 *.log
 local_settings.py
+sabra/settings/local.py
 db.sqlite3
 db.sqlite3-journal
 
