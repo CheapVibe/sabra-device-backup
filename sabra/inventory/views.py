@@ -488,8 +488,23 @@ class GroupDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
     template_name = 'inventory/group_confirm_delete.html'
     success_url = reverse_lazy('inventory:group_list')
     
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['device_count'] = self.object.devices.count()
+        return context
+    
     def delete(self, request, *args, **kwargs):
         group = self.get_object()
+        # Check if any devices use this group
+        device_count = group.devices.count()
+        if device_count > 0:
+            messages.error(
+                request,
+                f'Cannot delete "{group.name}" — {device_count} device{"s" if device_count != 1 else ""} '
+                f'{"are" if device_count != 1 else "is"} assigned to this group. '
+                f'Reassign or delete the devices first.'
+            )
+            return redirect('inventory:group_list')
         messages.success(request, f'Group "{group.name}" deleted successfully.')
         return super().delete(request, *args, **kwargs)
 
