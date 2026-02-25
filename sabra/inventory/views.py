@@ -57,6 +57,7 @@ class DeviceListView(LoginRequiredMixin, ListView):
         search = self.request.GET.get('q', '').strip()
         vendor = self.request.GET.get('vendor')
         group = self.request.GET.get('group')
+        credential = self.request.GET.get('credential')
         status = self.request.GET.get('status')
         tags = self.request.GET.get('tags', '').strip()
         
@@ -76,6 +77,9 @@ class DeviceListView(LoginRequiredMixin, ListView):
         
         if group:
             queryset = queryset.filter(group_id=group)
+        
+        if credential:
+            queryset = queryset.filter(credential_profile_id=credential)
         
         if status == 'active':
             queryset = queryset.filter(is_active=True)
@@ -105,6 +109,15 @@ class DeviceListView(LoginRequiredMixin, ListView):
         )
         # Add device groups
         context['groups'] = DeviceGroup.objects.all().order_by('name')
+        # Add credential choices - only credentials that have at least one device
+        associated_credential_ids = Device.objects.exclude(
+            credential_profile__isnull=True
+        ).values_list('credential_profile_id', flat=True).distinct()
+        context['credential_choices'] = list(
+            CredentialProfile.objects.filter(
+                id__in=associated_credential_ids
+            ).values_list('id', 'name').order_by('name')
+        )
         # Tags - only if table exists (graceful degradation before migrations)
         tags_enabled = is_tags_table_available()
         context['tags_enabled'] = tags_enabled

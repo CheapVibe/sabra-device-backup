@@ -54,6 +54,15 @@
                     {% endfor %}
                 </select>
             </div>
+            <div class="col-md-2">
+                <label class="form-label">Credentials</label>
+                <select class="form-select" name="credential" id="filter-credential">
+                    <option value="">All Credentials</option>
+                    {% for cred_id, cred_name in credential_choices %}
+                    <option value="{{ cred_id }}" {% if request.GET.credential == cred_id|stringformat:"d" %}selected{% endif %}>{{ cred_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             {% if tags_enabled %}
             <div class="col-md-2">
                 <label class="form-label">Tags</label>
@@ -61,7 +70,7 @@
                 <input type="hidden" name="tags" id="filter-tags" value="{{ current_tags }}">
             </div>
             {% endif %}
-            <div class="col-md-2">
+            <div class="col-md-{% if tags_enabled %}1{% else %}3{% endif %}">
                 <label class="form-label">Status</label>
                 <select class="form-select" name="status" id="filter-status">
                     <option value="">All</option>
@@ -69,15 +78,12 @@
                     <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
                 </select>
             </div>
-            <div class="col-md-{% if tags_enabled %}1{% else %}3{% endif %} d-flex align-items-end">
-                <noscript>
-                    <button type="submit" class="btn btn-outline-primary me-2">
-                        <i class="bi bi-search me-1"></i> Filter
-                    </button>
-                </noscript>
-                <a href="{% url 'inventory:device_list' %}" class="btn btn-outline-secondary">Clear</a>
-            </div>
         </form>
+        <div class="mt-2 text-end">
+            <a href="{% url 'inventory:device_list' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-x-circle me-1"></i>Clear Filters
+            </a>
+        </div>
     </div>
 </div>
 
@@ -255,7 +261,7 @@
     if (!form) return;
     
     const searchInput = document.getElementById('filter-search');
-    const selectFilters = ['filter-vendor', 'filter-group', 'filter-status'];
+    const selectFilters = ['filter-vendor', 'filter-group', 'filter-credential', 'filter-status'];
     let debounceTimer;
     
     // Instant filter on select change
@@ -312,7 +318,9 @@
                     </tag>`;
                 },
                 dropdownItem: function(tagData) {
-                    return `<div class="tagify__dropdown__item" tabindex="0" role="option" tagifySuggestionIdx="${tagData.tagifySuggestionIdx}">
+                    return `<div ${this.getAttributes(tagData)}
+                                class="${this.settings.classNames.dropdownItem} ${tagData.class || ''}"
+                                tabindex="0" role="option">
                         <span class="badge me-2" style="background-color: ${tagData.color || '#6B7280'}; pointer-events: none;">&nbsp;</span>
                         <span style="pointer-events: none;">${tagData.value}</span>
                     </div>`;
