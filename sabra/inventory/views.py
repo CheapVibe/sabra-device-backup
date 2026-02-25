@@ -205,10 +205,10 @@ class DeviceDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
     template_name = 'inventory/device_confirm_delete.html'
     success_url = reverse_lazy('inventory:device_list')
     
-    def delete(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         device = self.get_object()
         messages.success(request, f'Device "{device.name}" deleted successfully.')
-        response = super().delete(request, *args, **kwargs)
+        response = super().post(request, *args, **kwargs)
         # Clean up orphaned tags after device deletion
         # Note: Use 'num_devices' not 'device_count' to avoid conflict with DeviceTag.device_count property
         if is_tags_table_available():
@@ -407,14 +407,14 @@ class CredentialDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
     template_name = 'inventory/credential_confirm_delete.html'
     success_url = reverse_lazy('inventory:credential_list')
     
-    def delete(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         credential = self.get_object()
         # Check if any devices use this credential
         if Device.objects.filter(credential_profile=credential).exists():
             messages.error(request, 'Cannot delete credential profile that is in use by devices.')
             return redirect('inventory:credential_list')
         messages.success(request, f'Credential profile "{credential.name}" deleted successfully.')
-        return super().delete(request, *args, **kwargs)
+        return super().post(request, *args, **kwargs)
 
 
 # ============== Device Group Views ==============
@@ -493,7 +493,7 @@ class GroupDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
         context['device_count'] = self.object.devices.count()
         return context
     
-    def delete(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         group = self.get_object()
         # Check if any devices use this group
         device_count = group.devices.count()
@@ -506,7 +506,7 @@ class GroupDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
             )
             return redirect('inventory:group_list')
         messages.success(request, f'Group "{group.name}" deleted successfully.')
-        return super().delete(request, *args, **kwargs)
+        return super().post(request, *args, **kwargs)
 
 
 # ============== Vendor Views ==============
@@ -1042,7 +1042,7 @@ class VendorDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
         context['device_count'] = Device.objects.filter(vendor=self.object.name).count()
         return context
     
-    def delete(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         vendor = self.get_object()
         # Built-in vendors cannot be deleted
         if vendor.is_builtin:
@@ -1054,4 +1054,4 @@ class VendorDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
             messages.error(request, f'Cannot delete "{vendor.display_name}" — {device_count} devices use this vendor.')
             return redirect('inventory:vendor_list')
         messages.success(request, f'Vendor "{vendor.display_name}" deleted successfully.')
-        return super().delete(request, *args, **kwargs)
+        return super().post(request, *args, **kwargs)
