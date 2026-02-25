@@ -55,6 +55,10 @@ class Vendor(models.Model):
         default=True,
         help_text='Inactive vendors are hidden from selection'
     )
+    is_builtin = models.BooleanField(
+        default=False,
+        help_text='Built-in vendors shipped with the application cannot be deleted'
+    )
     
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)

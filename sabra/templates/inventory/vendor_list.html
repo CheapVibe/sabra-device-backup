@@ -78,6 +78,9 @@
                             {% else %}
                                 <span class="badge bg-secondary">Inactive</span>
                             {% endif %}
+                            {% if vendor.is_builtin %}
+                                <span class="badge bg-info" title="Built-in vendor"><i class="bi bi-lock-fill"></i></span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}

@@ -1037,12 +1037,21 @@ class VendorDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
     template_name = 'inventory/vendor_confirm_delete.html'
     success_url = reverse_lazy('inventory:vendor_list')
     
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['device_count'] = Device.objects.filter(vendor=self.object.name).count()
+        return context
+    
     def delete(self, request, *args, **kwargs):
         vendor = self.get_object()
+        # Built-in vendors cannot be deleted
+        if vendor.is_builtin:
+            messages.error(request, f'Cannot delete "{vendor.display_name}" — it is a built-in vendor.')
+            return redirect('inventory:vendor_list')
         # Check if any devices use this vendor
         device_count = Device.objects.filter(vendor=vendor.name).count()
         if device_count > 0:
-            messages.error(request, f'Cannot delete "{vendor.display_name}" - {device_count} devices use this vendor.')
+            messages.error(request, f'Cannot delete "{vendor.display_name}" — {device_count} devices use this vendor.')
             return redirect('inventory:vendor_list')
         messages.success(request, f'Vendor "{vendor.display_name}" deleted successfully.')
         return super().delete(request, *args, **kwargs)

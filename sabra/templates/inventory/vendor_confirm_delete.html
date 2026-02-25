@@ -20,9 +20,22 @@
             <div class="card-body text-center py-5">
                 <i class="bi bi-exclamation-triangle text-danger" style="font-size: 4rem;"></i>
                 <h4 class="mt-3">Delete "{{ vendor.display_name }}"?</h4>
+                {% if vendor.is_builtin %}
+                <div class="alert alert-danger mt-3">
+                    <i class="bi bi-lock-fill me-1"></i>
+                    <strong>Built-in Vendor</strong> — This vendor is shipped with the application and cannot be deleted.
+                </div>
+                {% elif device_count > 0 %}
+                <div class="alert alert-warning mt-3">
+                    <i class="bi bi-exclamation-circle me-1"></i>
+                    <strong>{{ device_count }} device{{ device_count|pluralize }}</strong> {{ device_count|pluralize:"is,are" }} using this vendor.
+                    You must change or delete them before deleting this vendor.
+                </div>
+                {% else %}
                 <p class="text-muted mb-4">
-                    This action cannot be undone. Make sure no devices are using this vendor.
+                    This action cannot be undone.
                 </p>
+                {% endif %}
                 
                 <div class="alert alert-info text-start">
                     <strong>Vendor:</strong> {{ vendor.display_name }}<br>
@@ -32,7 +45,7 @@
                 <form method="post">
                     {% csrf_token %}
                     <a href="{% url 'inventory:vendor_list' %}" class="btn btn-outline-secondary me-2">Cancel</a>
-                    <button type="submit" class="btn btn-danger">
+                    <button type="submit" class="btn btn-danger" {% if vendor.is_builtin or device_count > 0 %}disabled{% endif %}>
                         <i class="bi bi-trash me-1"></i> Delete Vendor
                     </button>
                 </form>

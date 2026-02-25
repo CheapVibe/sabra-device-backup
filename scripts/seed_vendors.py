@@ -107,15 +107,22 @@ def seed_vendors():
             defaults={
                 'display_name': vendor_data['display_name'],
                 'description': vendor_data['description'],
-                'is_active': True
+                'is_active': True,
+                'is_builtin': True
             }
         )
         if created:
             created_count += 1
             print(f"  Created: {vendor.display_name}")
         else:
+            # Ensure existing seeded vendors are marked as builtin
+            if not vendor.is_builtin:
+                vendor.is_builtin = True
+                vendor.save(update_fields=['is_builtin'])
+                print(f"  Marked builtin: {vendor.display_name}")
+            else:
+                print(f"  Exists: {vendor.display_name}")
             existing_count += 1
-            print(f"  Exists: {vendor.display_name}")
     
     print(f"\nSummary: {created_count} created, {existing_count} already existed")
 

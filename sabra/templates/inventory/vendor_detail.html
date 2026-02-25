@@ -18,10 +18,15 @@
         <a href="{% url 'inventory:vendor_edit' vendor.pk %}" class="btn btn-primary">
             <i class="bi bi-pencil me-1"></i> Edit
         </a>
-        {% if device_count == 0 %}
+        {% if not vendor.is_builtin and device_count == 0 %}
         <a href="{% url 'inventory:vendor_delete' vendor.pk %}" class="btn btn-danger">
             <i class="bi bi-trash me-1"></i> Delete
         </a>
+        {% endif %}
+        {% if vendor.is_builtin %}
+        <span class="badge bg-info ms-2 align-middle" title="This vendor is shipped with the application and cannot be deleted">
+            <i class="bi bi-lock-fill me-1"></i>Built-in
+        </span>
         {% endif %}
     </div>
 </div>
