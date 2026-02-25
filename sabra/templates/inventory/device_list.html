@@ -162,18 +162,12 @@
                             <span class="badge bg-secondary">Unknown</span>
                             {% endif %}
                         </td>
-                        <td class="action-buttons">
+                        <td class="action-buttons d-flex align-items-center">
                             <a href="{% url 'inventory:device_detail' device.pk %}" class="btn btn-sm btn-outline-secondary" title="View Details">
                                 <i class="bi bi-eye"></i>
                             </a>
                             <a href="{% url 'backups:additional_output_latest' device.pk %}" class="btn btn-sm btn-outline-info" title="View Additional Commands">
                                 <i class="bi bi-terminal"></i>
-                            </a>
-                            <a href="{% url 'inventory:device_edit' device.pk %}" class="btn btn-sm btn-outline-primary" title="Edit">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <a href="{% url 'inventory:device_copy' device.pk %}" class="btn btn-sm btn-outline-secondary" title="Copy Device">
-                                <i class="bi bi-copy"></i>
                             </a>
                             <form action="{% url 'backups:device_backup' device.pk %}" method="post" class="d-inline ms-3">
                                 {% csrf_token %}
@@ -181,6 +175,12 @@
                                     <i class="bi bi-cloud-download"></i>
                                 </button>
                             </form>
+                            <a href="{% url 'inventory:device_copy' device.pk %}" class="btn btn-sm btn-outline-secondary ms-auto" title="Copy Device">
+                                <i class="bi bi-copy"></i>
+                            </a>
+                            <a href="{% url 'inventory:device_edit' device.pk %}" class="btn btn-sm btn-outline-primary" title="Edit Device">
+                                <i class="bi bi-pencil"></i>
+                            </a>
                         </td>
                     </tr>
                     {% empty %}
