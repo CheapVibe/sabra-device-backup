@@ -442,10 +442,95 @@ document.addEventListener('DOMContentLoaded', function() {
         return (bytes / 1024 / 1024).toFixed(1) + ' MB';
     }
     
-    // Form submission loading state
-    document.getElementById('createBackupForm').addEventListener('submit', function() {
+    // Backup form - use fetch to download file and reset button state
+    document.getElementById('createBackupForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const form = this;
         createBtn.disabled = true;
         createBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating backup...';
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: new FormData(form),
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(function(response) {
+            const contentType = response.headers.get('Content-Type') || '';
+            
+            // Check for JSON error response
+            if (contentType.includes('application/json')) {
+                return response.json().then(function(data) {
+                    return { success: false, error: data.error || 'Unknown error' };
+                });
+            }
+            
+            // Check for file download (success)
+            if (response.ok && contentType.includes('application/octet-stream')) {
+                const disposition = response.headers.get('Content-Disposition') || '';
+                const filenameMatch = disposition.match(/filename="?([^";\n]+)"?/);
+                const filename = filenameMatch ? filenameMatch[1] : 'backup.sbk';
+                
+                return response.blob().then(function(blob) {
+                    return { success: true, blob: blob, filename: filename };
+                });
+            }
+            
+            // Unexpected response
+            return { success: false, error: 'Unexpected server response' };
+        })
+        .then(function(result) {
+            if (result.success) {
+                // Trigger download
+                const url = URL.createObjectURL(result.blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = result.filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                // Show success state
+                createBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Backup downloaded!';
+                createBtn.classList.remove('btn-primary');
+                createBtn.classList.add('btn-success');
+                
+                // Reload page after brief delay to reset form
+                setTimeout(function() {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                // Show error on button
+                createBtn.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>' + (result.error || 'Backup failed');
+                createBtn.classList.remove('btn-primary');
+                createBtn.classList.add('btn-danger');
+                
+                // Reset button after delay
+                setTimeout(function() {
+                    createBtn.disabled = false;
+                    createBtn.innerHTML = '<i class="bi bi-download me-2"></i>Create & Download Backup';
+                    createBtn.classList.remove('btn-danger');
+                    createBtn.classList.add('btn-primary');
+                }, 4000);
+            }
+        })
+        .catch(function(error) {
+            console.error('Backup failed:', error);
+            createBtn.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>Network error';
+            createBtn.classList.remove('btn-primary');
+            createBtn.classList.add('btn-danger');
+            
+            // Reset button after delay
+            setTimeout(function() {
+                createBtn.disabled = false;
+                createBtn.innerHTML = '<i class="bi bi-download me-2"></i>Create & Download Backup';
+                createBtn.classList.remove('btn-danger');
+                createBtn.classList.add('btn-primary');
+            }, 4000);
+        });
     });
     
     document.getElementById('uploadForm').addEventListener('submit', function() {

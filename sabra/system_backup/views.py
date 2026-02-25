@@ -75,6 +75,17 @@ class SystemBackupCreateView(LoginRequiredMixin, AdminRequiredMixin, View):
     Create and download an encrypted backup.
     """
     
+    def _is_ajax(self, request):
+        """Check if request is AJAX (fetch with X-Requested-With header)."""
+        return request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    
+    def _error_response(self, request, message):
+        """Return error as JSON for AJAX, redirect for regular form submission."""
+        if self._is_ajax(request):
+            return JsonResponse({'error': message}, status=400)
+        messages.error(request, message)
+        return redirect('system_backup:dashboard')
+    
     def post(self, request):
         # Get form data
         passphrase = request.POST.get('passphrase', '')
@@ -83,16 +94,13 @@ class SystemBackupCreateView(LoginRequiredMixin, AdminRequiredMixin, View):
         
         # Validate passphrase
         if not passphrase:
-            messages.error(request, 'Encryption passphrase is required.')
-            return redirect('system_backup:dashboard')
+            return self._error_response(request, 'Encryption passphrase is required.')
         
         if len(passphrase) < 8:
-            messages.error(request, 'Passphrase must be at least 8 characters.')
-            return redirect('system_backup:dashboard')
+            return self._error_response(request, 'Passphrase must be at least 8 characters.')
         
         if passphrase != passphrase_confirm:
-            messages.error(request, 'Passphrases do not match.')
-            return redirect('system_backup:dashboard')
+            return self._error_response(request, 'Passphrases do not match.')
         
         # Get component selections
         include_devices = request.POST.get('include_devices') == 'on'
@@ -120,8 +128,7 @@ class SystemBackupCreateView(LoginRequiredMixin, AdminRequiredMixin, View):
         # Validate at least one component selected
         if not any([include_devices, include_credentials, include_groups, 
                     include_vendors, include_jobs, include_mail_config]):
-            messages.error(request, 'Please select at least one component to backup.')
-            return redirect('system_backup:dashboard')
+            return self._error_response(request, 'Please select at least one component to backup.')
         
         try:
             # Create backup
@@ -150,8 +157,7 @@ class SystemBackupCreateView(LoginRequiredMixin, AdminRequiredMixin, View):
             
         except Exception as e:
             logger.error(f"Backup creation failed: {e}")
-            messages.error(request, f'Backup creation failed: {str(e)}')
-            return redirect('system_backup:dashboard')
+            return self._error_response(request, f'Backup creation failed: {str(e)}')
 
 
 class SystemBackupUploadView(LoginRequiredMixin, AdminRequiredMixin, View):

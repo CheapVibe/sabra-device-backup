@@ -283,6 +283,7 @@
     const tagsInput = document.getElementById('filter-tags-input');
     const tagsHidden = document.getElementById('filter-tags');
     const allTags = {{ all_tags|safe }};
+    let isInitializing = true;  // Flag to prevent form submission during initial load
     
     if (tagsInput && window.Tagify) {
         // Convert to Tagify whitelist format
@@ -292,10 +293,10 @@
         
         const tagify = new Tagify(tagsInput, {
             whitelist: whitelist,
-            enforceWhitelist: false,
+            enforceWhitelist: true,  // Only allow existing tags for filtering
             dropdown: {
                 maxItems: 20,
-                enabled: 0,
+                enabled: 0,  // Show dropdown on focus
                 closeOnSelect: true,
                 searchKeys: ['value']
             },
@@ -319,7 +320,7 @@
             }
         });
         
-        // Pre-populate from current filter
+        // Pre-populate from current filter (without triggering form submit)
         const currentTags = tagsHidden.value;
         if (currentTags) {
             const tagNames = currentTags.split(',').filter(Boolean);
@@ -330,10 +331,17 @@
             tagify.addTags(tagData);
         }
         
-        // Update hidden field and submit on change
+        // Mark initialization complete after a tick
+        setTimeout(function() { isInitializing = false; }, 100);
+        
+        // Update hidden field and submit on change (only after initialization)
         tagify.on('change', function(e) {
             const values = tagify.value.map(function(t) { return t.value; });
             tagsHidden.value = values.join(',');
+            
+            // Skip form submission during initial page load
+            if (isInitializing) return;
+            
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(function() {
                 form.submit();
