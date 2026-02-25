@@ -100,12 +100,12 @@ class DeviceListView(LoginRequiredMixin, ListView):
         context['total_count'] = Device.objects.count()
         context['active_count'] = Device.objects.filter(is_active=True).count()
         # Add vendor choices - only vendors that have at least one device
-        associated_vendor_names = Device.objects.values_list('vendor', flat=True).distinct()
-        context['vendor_choices'] = list(
-            Vendor.objects.filter(
-                is_active=True,
-                name__in=associated_vendor_names
-            ).values_list('name', 'display_name').order_by('display_name')
+        # Device.vendor stores TextChoices values (e.g., 'cisco_ios'), so use the enum directly
+        associated_vendors = set(Device.objects.values_list('vendor', flat=True).distinct())
+        vendor_dict = dict(Device.Vendor.choices)  # Maps value -> display name
+        context['vendor_choices'] = sorted(
+            [(v, vendor_dict.get(v, v)) for v in associated_vendors],
+            key=lambda x: x[1]  # Sort by display name
         )
         # Add device groups
         context['groups'] = DeviceGroup.objects.all().order_by('name')
