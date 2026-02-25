@@ -1,20 +1,10 @@
-#!/usr/bin/env python
 """
-DEPRECATED: Use the Django management command instead:
-    python manage.py seed_vendors
-
-This script is kept for backwards compatibility only.
+Management command to seed predefined vendors.
+These built-in vendors cannot be deleted by users.
 """
-import os
-import sys
 
-# Setup Django environment
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'sabra.settings')
+from django.core.management.base import BaseCommand
 
-import django
-django.setup()
-
-from sabra.inventory.models import Vendor
 
 # Default vendors based on Netmiko supported platforms
 DEFAULT_VENDORS = [
@@ -97,38 +87,54 @@ DEFAULT_VENDORS = [
 ]
 
 
-def seed_vendors():
-    """Create default vendors if they don't exist."""
-    created_count = 0
-    existing_count = 0
-    
-    for vendor_data in DEFAULT_VENDORS:
-        vendor, created = Vendor.objects.get_or_create(
-            name=vendor_data['name'],
-            defaults={
-                'display_name': vendor_data['display_name'],
-                'description': vendor_data['description'],
-                'is_active': True,
-                'is_builtin': True
-            }
+class Command(BaseCommand):
+    help = 'Seed predefined vendors (marked as built-in and protected from deletion)'
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--quiet',
+            action='store_true',
+            help='Suppress individual vendor output',
         )
-        if created:
-            created_count += 1
-            print(f"  Created: {vendor.display_name}")
-        else:
-            # Ensure existing seeded vendors are marked as builtin
-            if not vendor.is_builtin:
-                vendor.is_builtin = True
-                vendor.save(update_fields=['is_builtin'])
-                print(f"  Marked builtin: {vendor.display_name}")
+
+    def handle(self, *args, **options):
+        from sabra.inventory.models import Vendor
+        
+        quiet = options['quiet']
+        created_count = 0
+        updated_count = 0
+        
+        for vendor_data in DEFAULT_VENDORS:
+            vendor, created = Vendor.objects.get_or_create(
+                name=vendor_data['name'],
+                defaults={
+                    'display_name': vendor_data['display_name'],
+                    'description': vendor_data['description'],
+                    'is_active': True,
+                    'is_builtin': True,
+                }
+            )
+            
+            if created:
+                created_count += 1
+                if not quiet:
+                    self.stdout.write(f"  Created: {vendor.display_name}")
             else:
-                print(f"  Exists: {vendor.display_name}")
-            existing_count += 1
-    
-    print(f"\nSummary: {created_count} created, {existing_count} already existed")
-
-
-if __name__ == '__main__':
-    print("Seeding vendors...")
-    seed_vendors()
-    print("Done!")
+                # Ensure existing vendor is marked as builtin
+                if not vendor.is_builtin:
+                    vendor.is_builtin = True
+                    vendor.save(update_fields=['is_builtin'])
+                    updated_count += 1
+                    if not quiet:
+                        self.stdout.write(f"  Marked builtin: {vendor.display_name}")
+                elif not quiet:
+                    self.stdout.write(f"  Exists: {vendor.display_name}")
+        
+        # Summary
+        total_builtin = Vendor.objects.filter(is_builtin=True).count()
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Vendors: {created_count} created, {updated_count} marked builtin, "
+                f"{total_builtin} total protected"
+            )
+        )

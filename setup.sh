@@ -344,6 +344,10 @@ EOF
     print_status "Applying database migrations..."
     python manage.py migrate
     
+    # Seed predefined vendors (marked as builtin/protected)
+    print_status "Seeding predefined vendors..."
+    python manage.py seed_vendors --quiet
+    
     # Collect static files
     print_status "Collecting static files..."
     python manage.py collectstatic --noinput

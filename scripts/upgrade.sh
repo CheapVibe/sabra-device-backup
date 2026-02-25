@@ -515,6 +515,21 @@ collect_static() {
     ok "Static files collected"
 }
 
+seed_vendors() {
+    info "Seeding predefined vendors..."
+    
+    cd "$APP_DIR"
+    
+    if [[ "$DRY_RUN" == "true" ]]; then
+        info "[DRY-RUN] Would seed predefined vendors"
+        return 0
+    fi
+    
+    $PYTHON manage.py seed_vendors --quiet
+    
+    ok "Predefined vendors seeded"
+}
+
 fix_permissions() {
     info "Fixing file permissions..."
     
@@ -919,6 +934,7 @@ main() {
     update_dependencies
     migrate_secrets
     run_migrations
+    seed_vendors
     collect_static
     fix_permissions
     start_services
