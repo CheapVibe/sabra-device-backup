@@ -581,7 +581,7 @@ Some pictures:
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) file.
+AGPL-3.0 License - See [LICENSE](LICENSE) file.
 
 ---
 
