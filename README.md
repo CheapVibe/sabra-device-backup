@@ -563,19 +563,33 @@ celery -A sabra worker -l info
 # Start Celery Beat (separate terminal)
 celery -A sabra beat -l info
 ```
-Some pictures:
 
-<img width="1913" height="775" alt="image" src="https://github.com/user-attachments/assets/cb4087cf-fdf1-4f34-b95d-202511ba19e0" />
+## Screenshots
 
-<img width="1893" height="651" alt="image" src="https://github.com/user-attachments/assets/6242ca2c-46a8-49da-87bb-56145e371975" />
+### Dashboard
+Overview of backup status, device health, and recent activity.
 
-<img width="1911" height="660" alt="image" src="https://github.com/user-attachments/assets/b0e769db-b46b-477b-a24c-579a6f4d2959" />
+![Dashboard](docs/images/dashboard.png)
 
-<img width="1913" height="592" alt="image" src="https://github.com/user-attachments/assets/e8e307d3-d251-4991-8105-0bcbcb4bf8d9" />
+### Device Inventory
+Manage your network devices with filtering, tags, and bulk operations.
 
-<img width="1918" height="801" alt="image" src="https://github.com/user-attachments/assets/c896ae46-c91d-4248-823c-f7a5c6beba1b" />
+![Devices](docs/images/devices.png)
 
+### Device Details
+Detailed view of device configuration, backup history, and status.
 
+![Device Details](docs/images/device-details.png)
+
+### Credential Profiles
+Securely manage encrypted credentials for device authentication.
+
+![Credential Profile](docs/images/credential-profile.png)
+
+### Configuration Diff
+Side-by-side comparison showing configuration changes between backups.
+
+![Configuration Diff](docs/images/diff.png)
 
 ---
 
