@@ -161,7 +161,8 @@ class DeviceForm(forms.ModelForm):
                         instance.tags.add(tag)
             
             # Clean up orphaned tags (tags not associated with any device)
-            DeviceTag.objects.annotate(device_count=Count('devices')).filter(device_count=0).delete()
+            # Note: Use 'num_devices' not 'device_count' to avoid conflict with DeviceTag.device_count property
+            DeviceTag.objects.annotate(num_devices=Count('devices')).filter(num_devices=0).delete()
             
             self._save_m2m()
         

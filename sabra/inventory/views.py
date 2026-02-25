@@ -197,8 +197,9 @@ class DeviceDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
         messages.success(request, f'Device "{device.name}" deleted successfully.')
         response = super().delete(request, *args, **kwargs)
         # Clean up orphaned tags after device deletion
+        # Note: Use 'num_devices' not 'device_count' to avoid conflict with DeviceTag.device_count property
         if is_tags_table_available():
-            DeviceTag.objects.annotate(device_count=Count('devices')).filter(device_count=0).delete()
+            DeviceTag.objects.annotate(num_devices=Count('devices')).filter(num_devices=0).delete()
         return response
 
 

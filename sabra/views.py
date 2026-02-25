@@ -906,9 +906,10 @@ class AppImportProcessView(LoginRequiredMixin, AdminRequiredMixin, View):
                     errors.append(f"{hostname}: {str(e)}")
         
         # Clean up orphaned tags after import
+        # Note: Use 'num_devices' not 'device_count' to avoid conflict with DeviceTag.device_count property
         try:
             from sabra.inventory.models import DeviceTag
-            DeviceTag.objects.annotate(device_count=Count('devices')).filter(device_count=0).delete()
+            DeviceTag.objects.annotate(num_devices=Count('devices')).filter(num_devices=0).delete()
         except Exception:
             pass  # Gracefully ignore if tags table doesn't exist
         
